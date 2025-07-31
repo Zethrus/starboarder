@@ -50,12 +50,35 @@ function formatEmoji(emoji) {
 // Store starred message IDs to prevent duplicates
 const starredMessages = new Set();
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
   console.log(`Configuration:`);
   console.log(`- Starboard Channel: #${STARBOARD_CHANNEL}`);
   console.log(`- Required Stars: ${REQUIRED_STARS}`);
   console.log(`- Star Emoji: ${formatEmoji(parsedEmoji)}`);
+
+  // Get server information
+  const guilds = client.guilds.cache;
+  const guildCount = guilds.size;
+
+  // Calculate total users across all servers
+  let totalUsers = 0;
+  const guildInfo = [];
+
+  guilds.forEach(guild => {
+    const memberCount = guild.memberCount;
+    totalUsers += memberCount;
+    guildInfo.push(`  - ${guild.name} (${memberCount} users)`);
+  });
+
+  // Log server information
+  console.log(`\nConnected to ${guildCount} server${guildCount !== 1 ? 's' : ''} with a total of ${totalUsers.toLocaleString()} users:`);
+  console.log(guildInfo.join('\n'));
+
+  // Log additional bot information
+  console.log(`\nBot is in ${guildCount} server${guildCount !== 1 ? 's' : ''}`);
+  console.log(`Bot can see ${totalUsers.toLocaleString()} total users`);
+  console.log(`Bot prefix: ${formatEmoji(parsedEmoji)} (for starring messages)`);
 });
 
 client.on('messageReactionAdd', async (reaction, user) => {
@@ -100,7 +123,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
   );
 
   if (!starboardChannel) {
-    console.error(`Starboard channel #${STARBOARD_CHANNEL} not found`);
+    console.error(`Starboard channel #${STARBOARD_CHANNEL} not found in server: ${message.guild.name}`);
     return;
   }
 
@@ -140,9 +163,9 @@ client.on('messageReactionAdd', async (reaction, user) => {
   try {
     await starboardChannel.send({ embeds: [embed] });
     starredMessages.add(message.id);
-    console.log(`Message ${message.id} posted to starboard`);
+    console.log(`Message ${message.id} posted to starboard in server: ${message.guild.name}`);
   } catch (error) {
-    console.error('Error posting to starboard:', error);
+    console.error(`Error posting to starboard in server ${message.guild.name}:`, error);
   }
 });
 
