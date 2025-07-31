@@ -13,8 +13,39 @@ const client = new Client({
 
 // Load configuration from .env with defaults
 const STARBOARD_CHANNEL = process.env.STARBOARD_CHANNEL || 'starboard';
-const STAR_EMOJI = '⭐';
 const REQUIRED_STARS = parseInt(process.env.REQUIRED_STARS) || 5;
+const STAR_EMOJI = process.env.STAR_EMOJI || '⭐';
+
+// Parse the configured emoji
+function parseEmoji(emojiStr) {
+  // Check if it's a custom emoji (format: <:name:id> or <a:name:id>)
+  const customMatch = emojiStr.match(/^<?(a)?:([^\s]+):(\d+)>?$/);
+
+  if (customMatch) {
+    return {
+      isCustom: true,
+      animated: customMatch[1] === 'a',
+      name: customMatch[2],
+      id: customMatch[3]
+    };
+  }
+
+  // Otherwise treat as unicode emoji
+  return {
+    isCustom: false,
+    name: emojiStr
+  };
+}
+
+const parsedEmoji = parseEmoji(STAR_EMOJI);
+
+// Function to format emoji for display
+function formatEmoji(emoji) {
+  if (emoji.isCustom) {
+    return `<${emoji.animated ? 'a' : ''}:${emoji.name}:${emoji.id}>`;
+  }
+  return emoji.name;
+}
 
 // Store starred message IDs to prevent duplicates
 const starredMessages = new Set();
@@ -24,14 +55,19 @@ client.once('ready', () => {
   console.log(`Configuration:`);
   console.log(`- Starboard Channel: #${STARBOARD_CHANNEL}`);
   console.log(`- Required Stars: ${REQUIRED_STARS}`);
+  console.log(`- Star Emoji: ${formatEmoji(parsedEmoji)}`);
 });
 
 client.on('messageReactionAdd', async (reaction, user) => {
   // Ignore bot reactions
   if (user.bot) return;
 
-  // Only process star reactions
-  if (reaction.emoji.name !== STAR_EMOJI) return;
+  // Check if reaction matches our configured emoji
+  const isMatch = parsedEmoji.isCustom
+    ? reaction.emoji.id === parsedEmoji.id && reaction.emoji.name === parsedEmoji.name
+    : reaction.emoji.name === parsedEmoji.name;
+
+  if (!isMatch) return;
 
   // Fetch the full message if it's a partial
   if (reaction.message.partial) {
@@ -71,11 +107,11 @@ client.on('messageReactionAdd', async (reaction, user) => {
   // Create starboard embed
   const embed = new EmbedBuilder()
     .setColor(0xFFD700) // Gold color
-    .setTitle('⭐ Starred Message')
+    .setTitle(`${formatEmoji(parsedEmoji)} Starred Message`)
     .setAuthor({
-      name: message.author.tag, // Full username#discriminator
+      name: message.author.tag,
       iconURL: message.author.displayAvatarURL({ dynamic: true, size: 256 }),
-      url: `https://discord.com/users/${message.author.id}` // Link to user profile
+      url: `https://discord.com/users/${message.author.id}`
     })
     .setDescription(message.content || 'No content provided')
     .setImage(image)
@@ -86,7 +122,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
       },
       {
         name: 'Stars',
-        value: `${starCount} ${STAR_EMOJI}`,
+        value: `${starCount} ${formatEmoji(parsedEmoji)}`,
         inline: true
       },
       {
