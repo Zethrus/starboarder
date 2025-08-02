@@ -187,10 +187,19 @@ client.on('messageCreate', async (message) => {
 
     // Parse command arguments
     const args = message.content.slice(5).trim().split(/ +/);
-    const targetChannelName = args[0];
 
-    if (!targetChannelName) {
-      return message.reply('Please specify a target channel. Usage: `!move <target_channel> [message_id] [reason]`');
+    // Check if we have at least 2 arguments (target channel and message ID)
+    if (args.length < 2) {
+      return message.reply('Please specify a target channel and message ID. Usage: `!move <target_channel> <message_id> [reason]`');
+    }
+
+    const targetChannelName = args[0];
+    const messageId = args[1];
+    const reason = args.slice(2).join(' ').trim();
+
+    // Validate message ID format (17-19 digit number)
+    if (!/^\d{17,19}$/.test(messageId)) {
+      return message.reply('Invalid message ID format. Please use a valid message ID.');
     }
 
     // Find the target channel
@@ -207,37 +216,12 @@ client.on('messageCreate', async (message) => {
       return message.reply(`I don't have permission to send messages in #${targetChannelName}.`);
     }
 
-    // Get the message to move
+    // Try to fetch the message by ID
     let messageToMove;
-    let messageId = null;
-    let reason = '';
-
-    // Check if second argument is a message ID (17-19 digit number)
-    if (args.length > 1 && /^\d{17,19}$/.test(args[1])) {
-      messageId = args[1];
-      reason = args.slice(2).join(' ');
-
-      // Try to fetch by ID
-      try {
-        messageToMove = await message.channel.messages.fetch(messageId);
-      } catch (error) {
-        return message.reply('Could not find a message with that ID in this channel.');
-      }
-    } else {
-      // No message ID provided, get the last message with an attachment
-      reason = args.slice(1).join(' ');
-
-      const messages = await message.channel.messages.fetch({ limit: 10 });
-      messageToMove = messages.find(msg =>
-        msg.attachments.size > 0 &&
-        msg.attachments.some(att =>
-          att.contentType && (att.contentType.startsWith('image/') || att.contentType.startsWith('video/'))
-        )
-      );
-
-      if (!messageToMove) {
-        return message.reply('Could not find any recent message with an image or video in this channel.');
-      }
+    try {
+      messageToMove = await message.channel.messages.fetch(messageId);
+    } catch (error) {
+      return message.reply('Could not find a message with that ID in this channel.');
     }
 
     // Check if the message has an image or video attachment
