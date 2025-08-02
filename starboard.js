@@ -177,18 +177,20 @@ client.on('messageCreate', async (message) => {
 
   // Check if the message starts with the move command
   if (message.content.startsWith('!move')) {
-    // Check if user has permission to manage messages
-    if (!message.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
-      return message.reply('You need the "Manage Messages" permission to use this command.');
+    // Check if user has either Administrator or Manage Messages permission
+    const hasAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator);
+    const hasManageMessages = message.member.permissions.has(PermissionFlagsBits.ManageMessages);
+
+    if (!hasAdmin && !hasManageMessages) {
+      return message.reply('You need either the "Administrator" or "Manage Messages" permission to use this command.');
     }
 
     // Parse command arguments
     const args = message.content.slice(5).trim().split(/ +/);
     const targetChannelName = args[0];
-    const messageId = args[1];
 
     if (!targetChannelName) {
-      return message.reply('Please specify a target channel. Usage: `!move <target_channel> [message_id]`');
+      return message.reply('Please specify a target channel. Usage: `!move <target_channel> [message_id] [reason]`');
     }
 
     // Find the target channel
@@ -207,8 +209,14 @@ client.on('messageCreate', async (message) => {
 
     // Get the message to move
     let messageToMove;
+    let messageId = null;
+    let reason = '';
 
-    if (messageId) {
+    // Check if second argument is a message ID (17-19 digit number)
+    if (args.length > 1 && /^\d{17,19}$/.test(args[1])) {
+      messageId = args[1];
+      reason = args.slice(2).join(' ');
+
       // Try to fetch by ID
       try {
         messageToMove = await message.channel.messages.fetch(messageId);
@@ -216,7 +224,9 @@ client.on('messageCreate', async (message) => {
         return message.reply('Could not find a message with that ID in this channel.');
       }
     } else {
-      // Get the last message in the channel with an attachment
+      // No message ID provided, get the last message with an attachment
+      reason = args.slice(1).join(' ');
+
       const messages = await message.channel.messages.fetch({ limit: 10 });
       messageToMove = messages.find(msg =>
         msg.attachments.size > 0 &&
@@ -259,8 +269,17 @@ client.on('messageCreate', async (message) => {
             name: 'Moved By',
             value: `${message.author.tag}`
           }
-        )
-        .setTimestamp()
+        );
+
+      // Add reason field if provided
+      if (reason) {
+        embed.addFields({
+          name: 'Reason',
+          value: reason
+        });
+      }
+
+      embed.setTimestamp()
         .setFooter({
           text: `Original Message ID: ${messageToMove.id}`
         });
@@ -276,7 +295,11 @@ client.on('messageCreate', async (message) => {
       await messageToMove.delete();
 
       // Confirm the move
-      await message.reply(`Successfully moved the message to #${targetChannelName}.`);
+      let confirmationMessage = `Successfully moved the message to #${targetChannelName}.`;
+      if (reason) {
+        confirmationMessage += `\nReason: ${reason}`;
+      }
+      await message.reply(confirmationMessage);
     } catch (error) {
       console.error('Error moving message:', error);
       await message.reply('There was an error moving the message. Please check my permissions and try again.');
