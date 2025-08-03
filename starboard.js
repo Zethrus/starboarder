@@ -197,12 +197,18 @@ client.on('messageCreate', async (message) => {
     message.attachments.forEach(att => {
       console.log(`Attachment: ${att.name}, Content-Type: ${att.contentType}`);
     });
+
+    // Log channel mentions
+    console.log(`Channel mentions: ${message.mentions.channels.size}`);
+    message.mentions.channels.forEach(channel => {
+      console.log(`Mentioned channel: #${channel.name} (${channel.id})`);
+    });
   }
 
   // Check if message is in the photography channel
   if (message.channel.name !== PHOTOGRAPHY_CHANNEL) return;
 
-  // More robust hashtag detection - check message content, embeds, and attachment names
+  // More robust hashtag detection - check message content, embeds, attachment names, and channel mentions
   let hashtagFound = false;
 
   // Check in message content
@@ -245,8 +251,21 @@ client.on('messageCreate', async (message) => {
     }
   }
 
+  // Check channel mentions (this is the key fix)
+  if (!hashtagFound && message.mentions.channels.size > 0) {
+    for (const channel of message.mentions.channels.values()) {
+      // Check if the mentioned channel name matches our hashtag (without the #)
+      const channelNameWithoutHash = THEME_HASHTAG.substring(1); // Remove the #
+      if (channel.name === channelNameWithoutHash) {
+        hashtagFound = true;
+        console.log(`Hashtag found as channel mention: #${channel.name}`);
+        break;
+      }
+    }
+  }
+
   if (!hashtagFound) {
-    console.log('Hashtag not found in message, embeds, or attachments');
+    console.log('Hashtag not found in message, embeds, attachments, or channel mentions');
     return;
   }
 
@@ -306,8 +325,15 @@ client.on('messageCreate', async (message) => {
 
   console.log(`Theme channel found: #${THEME_CHANNEL}`);
 
-  // Get message content for description (remove hashtag if present)
+  // Get message content for description (remove hashtag/channel mention if present)
   let description = message.content || '';
+
+  // Remove channel mentions that match our hashtag
+  const channelNameWithoutHash = THEME_HASHTAG.substring(1); // Remove the #
+  const channelMentionRegex = new RegExp(`<#${message.mentions.channels.find(c => c.name === channelNameWithoutHash)?.id}>`, 'g');
+  description = description.replace(channelMentionRegex, '').trim();
+
+  // Remove hashtag if present
   if (hashtagRegex.test(description)) {
     description = description.replace(hashtagRegex, '').trim();
   }
