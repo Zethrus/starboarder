@@ -275,16 +275,40 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // Check if message has an image - more robust detection
+  // Count all image attachments
+  const imageAttachments = message.attachments.filter(att =>
+    att.contentType && att.contentType.startsWith('image/')
+  );
+
+  // Count images in embeds
+  let embedImageCount = 0;
+  message.embeds.forEach(embed => {
+    if (embed.image) embedImageCount++;
+    if (embed.thumbnail) embedImageCount++;
+  });
+
+  // Total image count
+  const totalImageCount = imageAttachments.size + embedImageCount;
+  console.log(`Total images found: ${totalImageCount} (${imageAttachments.size} attachments, ${embedImageCount} in embeds)`);
+
+  // Check if there's exactly one image
+  if (totalImageCount === 0) {
+    console.log('No image found in message');
+    // Notify the user that their submission needs an image
+    return message.reply(`Your submission for ${THEME_HASHTAG} must include an image. Please try again.`);
+  } else if (totalImageCount > 1) {
+    console.log('Multiple images found, denying submission');
+    // Notify the user that only single images are allowed
+    return message.reply(`Your submission for ${THEME_HASHTAG} must include only a single image to be a valid entry. Please try again.`);
+  }
+
+  // Get the image URL
   let image = null;
 
   // Check attachments first
-  const imageAttachment = message.attachments.find(att =>
-    att.contentType && att.contentType.startsWith('image/')
-  );
-  if (imageAttachment) {
-    image = imageAttachment.url;
-    console.log('Image found in attachment');
+  if (imageAttachments.size > 0) {
+    image = imageAttachments.first().url;
+    console.log('Using image from attachment');
   }
 
   // Check embeds if no attachment image found
@@ -292,7 +316,7 @@ client.on('messageCreate', async (message) => {
     const embedImage = message.embeds.find(embed => embed.image);
     if (embedImage) {
       image = embedImage.image.url;
-      console.log('Image found in embed');
+      console.log('Using image from embed');
     }
   }
 
@@ -301,14 +325,8 @@ client.on('messageCreate', async (message) => {
     const embedThumbnail = message.embeds.find(embed => embed.thumbnail);
     if (embedThumbnail) {
       image = embedThumbnail.thumbnail.url;
-      console.log('Image found in embed thumbnail');
+      console.log('Using image from embed thumbnail');
     }
-  }
-
-  if (!image) {
-    console.log('No image found in message');
-    // Notify the user that their submission needs an image
-    return message.reply(`Your submission for ${THEME_HASHTAG} must include an image. Please try again.`);
   }
 
   console.log('Image found, proceeding with submission');
