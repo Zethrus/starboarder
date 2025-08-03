@@ -187,21 +187,68 @@ client.on('messageCreate', async (message) => {
   // Ignore bot messages
   if (message.author.bot) return;
 
+  // Debug: Log all messages in photography channel
+  if (message.channel.name === PHOTOGRAPHY_CHANNEL) {
+    console.log(`Message in photography channel: "${message.content}"`);
+    console.log(`Attachments: ${message.attachments.size}`);
+    console.log(`Embeds: ${message.embeds.length}`);
+
+    // Log attachment details
+    message.attachments.forEach(att => {
+      console.log(`Attachment: ${att.name}, Content-Type: ${att.contentType}`);
+    });
+  }
+
   // Check if message is in the photography channel
   if (message.channel.name !== PHOTOGRAPHY_CHANNEL) return;
 
-  // More robust hashtag detection
+  // More robust hashtag detection - check message content, embeds, and attachment names
+  let hashtagFound = false;
+
+  // Check in message content
   const hashtagRegex = new RegExp(`\\b${THEME_HASHTAG.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
-  if (!hashtagRegex.test(message.content)) {
-    console.log('Hashtag not found in message');
-    return;
+  if (hashtagRegex.test(message.content)) {
+    hashtagFound = true;
+    console.log('Hashtag found in message content');
   }
 
-  // After defining the regex
-  console.log(`Looking for hashtag: "${THEME_HASHTAG}"`);
-  console.log(`Regex pattern: ${hashtagRegex}`);
-  console.log(`Message content: "${message.content}"`);
-  console.log(`Hashtag found: ${hashtagRegex.test(message.content)}`);
+  // Check in embeds (for images posted with URLs)
+  if (!hashtagFound && message.embeds.length > 0) {
+    for (const embed of message.embeds) {
+      if (embed.description && hashtagRegex.test(embed.description)) {
+        hashtagFound = true;
+        console.log('Hashtag found in embed description');
+        break;
+      }
+      if (embed.title && hashtagRegex.test(embed.title)) {
+        hashtagFound = true;
+        console.log('Hashtag found in embed title');
+        break;
+      }
+    }
+  }
+
+  // Check in attachment names/comments
+  if (!hashtagFound && message.attachments.size > 0) {
+    for (const attachment of message.attachments) {
+      if (attachment.name && hashtagRegex.test(attachment.name)) {
+        hashtagFound = true;
+        console.log('Hashtag found in attachment name');
+        break;
+      }
+      // Some Discord clients put the hashtag in the attachment comment
+      if (attachment.description && hashtagRegex.test(attachment.description)) {
+        hashtagFound = true;
+        console.log('Hashtag found in attachment description');
+        break;
+      }
+    }
+  }
+
+  if (!hashtagFound) {
+    console.log('Hashtag not found in message, embeds, or attachments');
+    return;
+  }
 
   // Skip if already submitted
   if (themeSubmissions.has(message.id)) {
@@ -209,8 +256,36 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // Check if message has an image
-  const image = getImageFromMessage(message);
+  // Check if message has an image - more robust detection
+  let image = null;
+
+  // Check attachments first
+  const imageAttachment = message.attachments.find(att =>
+    att.contentType && att.contentType.startsWith('image/')
+  );
+  if (imageAttachment) {
+    image = imageAttachment.url;
+    console.log('Image found in attachment');
+  }
+
+  // Check embeds if no attachment image found
+  if (!image && message.embeds.length > 0) {
+    const embedImage = message.embeds.find(embed => embed.image);
+    if (embedImage) {
+      image = embedImage.image.url;
+      console.log('Image found in embed');
+    }
+  }
+
+  // Check embed thumbnails if no other image found
+  if (!image && message.embeds.length > 0) {
+    const embedThumbnail = message.embeds.find(embed => embed.thumbnail);
+    if (embedThumbnail) {
+      image = embedThumbnail.thumbnail.url;
+      console.log('Image found in embed thumbnail');
+    }
+  }
+
   if (!image) {
     console.log('No image found in message');
     // Notify the user that their submission needs an image
@@ -231,6 +306,12 @@ client.on('messageCreate', async (message) => {
 
   console.log(`Theme channel found: #${THEME_CHANNEL}`);
 
+  // Get message content for description (remove hashtag if present)
+  let description = message.content || '';
+  if (hashtagRegex.test(description)) {
+    description = description.replace(hashtagRegex, '').trim();
+  }
+
   // Create theme submission embed
   const embed = new EmbedBuilder()
     .setColor(0x9B59B6) // Purple color
@@ -240,7 +321,7 @@ client.on('messageCreate', async (message) => {
       iconURL: message.author.displayAvatarURL({ dynamic: true, size: 256 }),
       url: `https://discord.com/users/${message.author.id}`
     })
-    .setDescription(message.content.replace(THEME_HASHTAG, '').trim() || 'No description provided')
+    .setDescription(description || 'No description provided')
     .setImage(image)
     .addFields(
       {
