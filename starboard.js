@@ -16,6 +16,11 @@ const STARBOARD_CHANNEL = process.env.STARBOARD_CHANNEL || 'starboard';
 const REQUIRED_STARS = parseInt(process.env.REQUIRED_STARS) || 5;
 const STAR_EMOJI = process.env.STAR_EMOJI || '⭐';
 
+// New configuration for theme-of-the-month feature
+const PHOTOGRAPHY_CHANNEL = process.env.PHOTOGRAPHY_CHANNEL || 'photography';
+const THEME_CHANNEL = process.env.THEME_CHANNEL || 'theme-of-the-month-submissions';
+const THEME_HASHTAG = process.env.THEME_HASHTAG || '#theme-of-the-month';
+
 // Parse the configured emoji
 function parseEmoji(emojiStr) {
   // Check if it's a custom emoji (format: <:name:id> or <a:name:id>)
@@ -50,12 +55,18 @@ function formatEmoji(emoji) {
 // Store starred message IDs to prevent duplicates
 const starredMessages = new Set();
 
+// Store theme submission IDs to prevent duplicates
+const themeSubmissions = new Set();
+
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
   console.log(`Configuration:`);
   console.log(`- Starboard Channel: #${STARBOARD_CHANNEL}`);
   console.log(`- Required Stars: ${REQUIRED_STARS}`);
   console.log(`- Star Emoji: ${formatEmoji(parsedEmoji)}`);
+  console.log(`- Photography Channel: #${PHOTOGRAPHY_CHANNEL}`);
+  console.log(`- Theme Channel: #${THEME_CHANNEL}`);
+  console.log(`- Theme Hashtag: ${THEME_HASHTAG}`);
 
   // Get server information
   const guilds = client.guilds.cache;
@@ -167,6 +178,78 @@ client.on('messageReactionAdd', async (reaction, user) => {
     console.log(`Message ${message.id} posted to starboard in server: ${message.guild.name}`);
   } catch (error) {
     console.error(`Error posting to starboard in server ${message.guild.name}:`, error);
+  }
+});
+
+// Handle theme-of-the-month submissions
+client.on('messageCreate', async (message) => {
+  // Ignore bot messages
+  if (message.author.bot) return;
+
+  // Check if message is in the photography channel
+  if (message.channel.name !== PHOTOGRAPHY_CHANNEL) return;
+
+  // Check if message contains the theme hashtag
+  if (!message.content.includes(THEME_HASHTAG)) return;
+
+  // Skip if already submitted
+  if (themeSubmissions.has(message.id)) return;
+
+  // Check if message has an image
+  const image = getImageFromMessage(message);
+  if (!image) {
+    // Optionally, notify the user that their submission needs an image
+    return message.reply(`Your submission for ${THEME_HASHTAG} must include an image. Please try again.`);
+  }
+
+  // Find theme channel
+  const themeChannel = message.guild.channels.cache.find(
+    channel => channel.name === THEME_CHANNEL && channel.isTextBased()
+  );
+
+  if (!themeChannel) {
+    console.error(`Theme channel #${THEME_CHANNEL} not found in server: ${message.guild.name}`);
+    return;
+  }
+
+  // Create theme submission embed
+  const embed = new EmbedBuilder()
+    .setColor(0x9B59B6) // Purple color
+    .setTitle(`${THEME_HASHTAG} Submission`)
+    .setAuthor({
+      name: message.author.tag,
+      iconURL: message.author.displayAvatarURL({ dynamic: true, size: 256 }),
+      url: `https://discord.com/users/${message.author.id}`
+    })
+    .setDescription(message.content.replace(THEME_HASHTAG, '').trim() || 'No description provided')
+    .setImage(image)
+    .addFields(
+      {
+        name: 'Original Message',
+        value: `[Jump to message](${message.url})`
+      },
+      {
+        name: 'Submitted In',
+        value: `${message.channel}`,
+        inline: true
+      }
+    )
+    .setTimestamp()
+    .setFooter({
+      text: `Message ID: ${message.id} | Author ID: ${message.author.id}`
+    });
+
+  // Post to theme channel
+  try {
+    await themeChannel.send({ embeds: [embed] });
+    themeSubmissions.add(message.id);
+    console.log(`Message ${message.id} submitted to theme channel in server: ${message.guild.name}`);
+
+    // Optionally, notify the user that their submission was successful
+    message.reply(`Your submission for ${THEME_HASHTAG} has been posted in #${THEME_CHANNEL}!`);
+  } catch (error) {
+    console.error(`Error posting to theme channel in server ${message.guild.name}:`, error);
+    message.reply(`There was an error submitting your post to #${THEME_CHANNEL}. Please try again later.`);
   }
 });
 
