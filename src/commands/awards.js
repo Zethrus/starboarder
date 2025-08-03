@@ -44,7 +44,6 @@ module.exports = {
 /**
  * Handles the "!award create" subcommand.
  * Allows for multi-word award names and handles quotes.
- * Usage: !award create <award name> <@role>
  * @param {Message} message The Discord message object.
  * @param {string[]} args The arguments for the subcommand.
  */
@@ -65,11 +64,10 @@ async function handleCreateAward(message, args) {
     return replyThenDelete(message, 'You must mention a valid role at the end of the command.');
   }
 
-  // Join all arguments except the last one to form the award name
   let awardName = args.slice(0, -1).join(' ');
 
-  // Sanitize the name: convert to lowercase, trim whitespace, and remove surrounding quotes
-  awardName = awardName.toLowerCase().trim().replace(/^"(.+(?="$))"$/, '$1');
+  // Sanitize the name: lowercase, trim, remove quotes, and normalize whitespace
+  awardName = awardName.toLowerCase().trim().replace(/^"(.+(?="$))"$/, '$1').replace(/\s+/g, ' ');
 
 
   if (!awardName) {
@@ -93,7 +91,6 @@ async function handleCreateAward(message, args) {
 /**
  * Handles the "!award delete" subcommand.
  * Allows for multi-word award names and handles quotes.
- * Usage: !award delete <award name>
  * @param {Message} message The Discord message object.
  * @param {string[]} args The arguments for the subcommand.
  */
@@ -107,20 +104,17 @@ async function handleDeleteAward(message, args) {
     return replyThenDelete(message, 'Usage: `!award delete <award name>`');
   }
 
-  // Join all arguments to form the award name
   let awardName = args.join(' ');
 
-  // Sanitize the name: convert to lowercase, trim whitespace, and remove surrounding quotes
-  awardName = awardName.toLowerCase().trim().replace(/^"(.+(?="$))"$/, '$1');
+  // Sanitize the name: lowercase, trim, remove quotes, and normalize whitespace
+  awardName = awardName.toLowerCase().trim().replace(/^"(.+(?="$))"$/, '$1').replace(/\s+/g, ' ');
 
   const db = readDb();
 
-  // Check if the award exists
   if (!db.awards[awardName]) {
     return replyThenDelete(message, `No award named "${awardName}" was found.`);
   }
 
-  // Delete the award from the database
   delete db.awards[awardName];
   writeDb(db);
 
