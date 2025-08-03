@@ -294,12 +294,20 @@ client.on('messageCreate', async (message) => {
   // Check if there's exactly one image
   if (totalImageCount === 0) {
     console.log('No image found in message');
-    // Notify the user that their submission needs an image
-    return message.reply(`Your submission for ${THEME_HASHTAG} must include an image. Please try again.`);
+    // Notify the user that their submission needs an image and delete after 5 seconds
+    const reply = await message.reply(`Your submission for ${THEME_HASHTAG} must include an image. Please try again.`);
+    setTimeout(() => {
+      reply.delete().catch(console.error);
+    }, 5000);
+    return;
   } else if (totalImageCount > 1) {
     console.log('Multiple images found, denying submission');
-    // Notify the user that only single images are allowed
-    return message.reply(`Your submission for ${THEME_HASHTAG} must include only a single image to be a valid entry. Please try again.`);
+    // Notify the user that only single images are allowed and delete after 5 seconds
+    const reply = await message.reply(`Your submission for ${THEME_HASHTAG} must include only a single image to be a valid entry. Please try again.`);
+    setTimeout(() => {
+      reply.delete().catch(console.error);
+    }, 5000);
+    return;
   }
 
   // Get the image URL
@@ -389,11 +397,173 @@ client.on('messageCreate', async (message) => {
     themeSubmissions.add(message.id);
     console.log(`Message ${message.id} submitted to theme channel in server: ${message.guild.name}`);
 
-    // Notify the user that their submission was successful
-    message.reply(`Your submission for ${THEME_HASHTAG} has been posted in #${THEME_CHANNEL}!`);
+    // Notify the user that their submission was successful and delete after 5 seconds
+    const reply = await message.reply(`Your submission for ${THEME_HASHTAG} has been posted in #${THEME_CHANNEL}!`);
+    setTimeout(() => {
+      reply.delete().catch(console.error);
+    }, 5000);
   } catch (error) {
     console.error(`Error posting to theme channel in server ${message.guild.name}:`, error);
-    message.reply(`There was an error submitting your post to #${THEME_CHANNEL}. Please try again later.`);
+    // Notify the user of the error and delete after 5 seconds
+    const reply = await message.reply(`There was an error submitting your post to #${THEME_CHANNEL}. Please try again later.`);
+    setTimeout(() => {
+      reply.delete().catch(console.error);
+    }, 5000);
+  }
+});
+
+// Handle the move command
+client.on('messageCreate', async (message) => {
+  // Ignore bot messages
+  if (message.author.bot) return;
+
+  // Check if the message starts with the move command
+  if (message.content.startsWith('!move')) {
+    // Check if user has either Administrator or Manage Messages permission
+    const hasAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator);
+    const hasManageMessages = message.member.permissions.has(PermissionFlagsBits.ManageMessages);
+
+    if (!hasAdmin && !hasManageMessages) {
+      const reply = await message.reply('You need either the "Administrator" or "Manage Messages" permission to use this command.');
+      setTimeout(() => {
+        reply.delete().catch(console.error);
+      }, 5000);
+      return;
+    }
+
+    // Parse command arguments
+    const args = message.content.slice(5).trim().split(/ +/);
+
+    // Check if we have at least 2 arguments (target channel and message ID)
+    if (args.length < 2) {
+      const reply = await message.reply('Please specify a target channel and message ID. Usage: `!move <target_channel> <message_id> [reason]`');
+      setTimeout(() => {
+        reply.delete().catch(console.error);
+      }, 5000);
+      return;
+    }
+
+    const targetChannelName = args[0];
+    const messageId = args[1];
+    const reason = args.slice(2).join(' ').trim();
+
+    // Validate message ID format (17-19 digit number)
+    if (!/^\d{17,19}$/.test(messageId)) {
+      const reply = await message.reply('Invalid message ID format. Please use a valid message ID.');
+      setTimeout(() => {
+        reply.delete().catch(console.error);
+      }, 5000);
+      return;
+    }
+
+    // Find the target channel
+    const targetChannel = message.guild.channels.cache.find(
+      channel => channel.name === targetChannelName && channel.isTextBased()
+    );
+
+    if (!targetChannel) {
+      const reply = await message.reply(`Could not find a channel named "${targetChannelName}".`);
+      setTimeout(() => {
+        reply.delete().catch(console.error);
+      }, 5000);
+      return;
+    }
+
+    // Check if bot has permission to send messages in the target channel
+    if (!targetChannel.permissionsFor(message.guild.members.me).has(PermissionFlagsBits.SendMessages)) {
+      const reply = await message.reply(`I don't have permission to send messages in #${targetChannelName}.`);
+      setTimeout(() => {
+        reply.delete().catch(console.error);
+      }, 5000);
+      return;
+    }
+
+    // Try to fetch the message by ID
+    let messageToMove;
+    try {
+      messageToMove = await message.channel.messages.fetch(messageId);
+    } catch (error) {
+      const reply = await message.reply('Could not find a message with that ID in this channel.');
+      setTimeout(() => {
+        reply.delete().catch(console.error);
+      }, 5000);
+      return;
+    }
+
+    // Check if the message has an image or video attachment
+    const attachment = messageToMove.attachments.find(att =>
+      att.contentType && (att.contentType.startsWith('image/') || att.contentType.startsWith('video/'))
+    );
+
+    if (!attachment) {
+      const reply = await message.reply('The specified message does not contain an image or video attachment.');
+      setTimeout(() => {
+        reply.delete().catch(console.error);
+      }, 5000);
+      return;
+    }
+
+    try {
+      // Create embed for the reposted message
+      const embed = new EmbedBuilder()
+        .setColor(0x00AE86) // Green color
+        .setTitle('Moved Content')
+        .setAuthor({
+          name: messageToMove.author.tag,
+          iconURL: messageToMove.author.displayAvatarURL({ dynamic: true, size: 256 }),
+          url: `https://discord.com/users/${messageToMove.author.id}`
+        })
+        .setDescription(messageToMove.content || 'No content provided')
+        .addFields(
+          {
+            name: 'Originally Posted In',
+            value: `${messageToMove.channel}`
+          },
+          {
+            name: 'Moved By',
+            value: `${message.author.tag}`
+          }
+        );
+
+      // Add reason field if provided
+      if (reason) {
+        embed.addFields({
+          name: 'Reason',
+          value: reason
+        });
+      }
+
+      embed.setTimestamp()
+        .setFooter({
+          text: `Original Message ID: ${messageToMove.id}`
+        });
+
+      // Send the attachment and embed to the target channel
+      await targetChannel.send({
+        content: `**Moved from ${messageToMove.channel}:**`,
+        embeds: [embed],
+        files: [attachment]
+      });
+
+      // Delete the original message
+      await messageToMove.delete();
+
+      // Confirm the move and delete after 5 seconds
+      let confirmationMessage = `Successfully moved the message to #${targetChannelName}.`;
+      if (reason) {
+        confirmationMessage += `\nReason: ${reason}`;
+      }
+      const reply = await message.reply(confirmationMessage);
+      setTimeout(() => {
+        reply.delete().catch(console.error);
+      }, 5000);
+    } catch (error) {
+      console.error('Error moving message:', error);
+      const reply = await message.reply('There was an error moving the message. Please check my permissions and try again.');
+      setTimeout(() => {
+        reply.delete().catch(console.error);
+      }, 5000);
+    }
   }
 });
 
