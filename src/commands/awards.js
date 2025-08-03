@@ -43,8 +43,8 @@ module.exports = {
 
 /**
  * Handles the "!award create" subcommand.
- * Allows for multi-word award names.
- * Usage: !award create <award name with spaces> <@role>
+ * Allows for multi-word award names and handles quotes.
+ * Usage: !award create <award name> <@role>
  * @param {Message} message The Discord message object.
  * @param {string[]} args The arguments for the subcommand.
  */
@@ -65,7 +65,12 @@ async function handleCreateAward(message, args) {
     return replyThenDelete(message, 'You must mention a valid role at the end of the command.');
   }
 
-  const awardName = args.slice(0, -1).join(' ').toLowerCase();
+  // Join all arguments except the last one to form the award name
+  let awardName = args.slice(0, -1).join(' ');
+
+  // Sanitize the name: convert to lowercase, trim whitespace, and remove surrounding quotes
+  awardName = awardName.toLowerCase().trim().replace(/^"(.+(?="$))"$/, '$1');
+
 
   if (!awardName) {
     return replyThenDelete(message, 'You must provide a name for the award.');
@@ -87,8 +92,8 @@ async function handleCreateAward(message, args) {
 
 /**
  * Handles the "!award delete" subcommand.
- * Allows for multi-word award names.
- * Usage: !award delete <award name with spaces>
+ * Allows for multi-word award names and handles quotes.
+ * Usage: !award delete <award name>
  * @param {Message} message The Discord message object.
  * @param {string[]} args The arguments for the subcommand.
  */
@@ -102,7 +107,12 @@ async function handleDeleteAward(message, args) {
     return replyThenDelete(message, 'Usage: `!award delete <award name>`');
   }
 
-  const awardName = args.join(' ').toLowerCase();
+  // Join all arguments to form the award name
+  let awardName = args.join(' ');
+
+  // Sanitize the name: convert to lowercase, trim whitespace, and remove surrounding quotes
+  awardName = awardName.toLowerCase().trim().replace(/^"(.+(?="$))"$/, '$1');
+
   const db = readDb();
 
   // Check if the award exists
