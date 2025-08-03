@@ -1,0 +1,69 @@
+// src/utils/helpers.js
+
+/**
+ * Extracts an image URL from a message.
+ * Can optionally enforce that only one image is present.
+ * @param {Message} message The Discord message object.
+ * @param {boolean} enforceSingleImage If true, returns null if more than one image is found.
+ * @returns {string|null} The URL of the image, or null if not found or criteria not met.
+ */
+function getImageFromMessage(message, enforceSingleImage = false) {
+  const images = [];
+
+  // Check attachments
+  message.attachments.forEach(att => {
+    if (att.contentType && att.contentType.startsWith('image/')) {
+      images.push(att.url);
+    }
+  });
+
+  // Check embeds
+  message.embeds.forEach(embed => {
+    if (embed.image) images.push(embed.image.url);
+    if (embed.thumbnail) images.push(embed.thumbnail.url);
+  });
+
+  if (enforceSingleImage && images.length !== 1) {
+    console.log(`Image check failed: Found ${images.length} images, but exactly 1 was required.`);
+    return null;
+  }
+
+  return images.length > 0 ? images[0] : null;
+}
+
+/**
+ * Formats a parsed emoji object for display in messages.
+ * @param {object} emoji The parsed emoji object from config.
+ * @returns {string} The formatted emoji string.
+ */
+function formatEmoji(emoji) {
+  if (!emoji) return '⭐'; // Default
+  if (emoji.isCustom) {
+    return `<${emoji.animated ? 'a' : ''}:${emoji.name}:${emoji.id}>`;
+  }
+  return emoji.name;
+}
+
+/**
+ * Sends a reply to a message and then deletes the reply after a specified time.
+ * @param {Message} message The message to reply to.
+ * @param {string} content The content of the reply.
+ * @param {number} [delay=5000] The time in milliseconds to wait before deleting the reply.
+ */
+async function replyThenDelete(message, content, delay = 5000) {
+  try {
+    const reply = await message.reply(content);
+    setTimeout(() => {
+      reply.delete().catch(err => console.error("Failed to delete reply:", err));
+    }, delay);
+  } catch (error) {
+    console.error("Failed to send or schedule deletion for reply:", error);
+  }
+}
+
+
+module.exports = {
+  getImageFromMessage,
+  formatEmoji,
+  replyThenDelete,
+};
