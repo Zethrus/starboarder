@@ -187,25 +187,15 @@ client.on('messageCreate', async (message) => {
   // Ignore bot messages
   if (message.author.bot) return;
 
-  // Debug: Log all messages in photography channel
-  if (message.channel.name === PHOTOGRAPHY_CHANNEL) {
-    console.log(`Message in photography channel: "${message.content}"`);
-    console.log(`Looking for hashtag: "${THEME_HASHTAG}"`);
-    console.log(`Hashtag found: ${message.content.includes(THEME_HASHTAG)}`);
-  }
-
   // Check if message is in the photography channel
-  if (message.channel.name !== PHOTOGRAPHY_CHANNEL) {
-    return;
-  }
+  if (message.channel.name !== PHOTOGRAPHY_CHANNEL) return;
 
-  // Check if message contains the theme hashtag
-  if (!message.content.includes(THEME_HASHTAG)) {
+  // More robust hashtag detection
+  const hashtagRegex = new RegExp(`\\b${THEME_HASHTAG.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+  if (!hashtagRegex.test(message.content)) {
     console.log('Hashtag not found in message');
     return;
   }
-
-  console.log('Hashtag found, proceeding with submission');
 
   // Skip if already submitted
   if (themeSubmissions.has(message.id)) {
