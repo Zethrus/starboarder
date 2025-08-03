@@ -40,7 +40,8 @@ module.exports = {
 
 /**
  * Handles the "!award create" subcommand.
- * Usage: !award create <awardName> <@role>
+ * Allows for multi-word award names.
+ * Usage: !award create <award name with spaces> <@role>
  * @param {Message} message The Discord message object.
  * @param {string[]} args The arguments for the subcommand.
  */
@@ -52,15 +53,22 @@ async function handleCreateAward(message, args) {
 
   // Check for correct number of arguments
   if (args.length < 2) {
-    return replyThenDelete(message, 'Usage: `!award create <awardName> <@role>`');
+    return replyThenDelete(message, 'Usage: `!award create <award name> <@role>`');
   }
 
-  const awardName = args[0].toLowerCase();
   const role = message.mentions.roles.first();
+  const roleMention = args[args.length - 1];
 
-  // Validate the role
-  if (!role) {
-    return replyThenDelete(message, 'You must mention a valid role to associate with this award.');
+  // Validate that a role was mentioned and it's the last argument
+  if (!role || !roleMention.startsWith('<@&') || !roleMention.endsWith('>')) {
+    return replyThenDelete(message, 'You must mention a valid role at the end of the command.');
+  }
+
+  // Join all arguments except the last one to form the award name
+  const awardName = args.slice(0, -1).join(' ').toLowerCase();
+
+  if (!awardName) {
+    return replyThenDelete(message, 'You must provide a name for the award.');
   }
 
   const db = readDb();
