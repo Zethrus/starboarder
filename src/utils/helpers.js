@@ -1,4 +1,39 @@
 // src/utils/helpers.js
+const fs = require('node:fs');
+const path = require('node:path');
+
+// --- DATABASE HELPERS ---
+const dbPath = path.join(__dirname, '..', '..', 'db.json');
+
+/**
+ * Reads the entire database from db.json.
+ * @returns {object} The parsed database object.
+ */
+function readDb() {
+  try {
+    const data = fs.readFileSync(dbPath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error("Error reading from database:", error);
+    // If the file doesn't exist or is corrupted, return a default structure
+    return { awards: {}, userAwards: {} };
+  }
+}
+
+/**
+ * Writes an object to the database file.
+ * @param {object} data The data object to write to the database.
+ */
+function writeDb(data) {
+  try {
+    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error("Error writing to database:", error);
+  }
+}
+
+
+// --- MESSAGE & EMOJI HELPERS (from previous step) ---
 
 /**
  * Extracts an image URL from a message.
@@ -63,6 +98,8 @@ async function replyThenDelete(message, content, delay = 5000) {
 
 
 module.exports = {
+  readDb,
+  writeDb,
   getImageFromMessage,
   formatEmoji,
   replyThenDelete,
