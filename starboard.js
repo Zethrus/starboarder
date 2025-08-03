@@ -19,7 +19,8 @@ const STAR_EMOJI = process.env.STAR_EMOJI || '⭐';
 // New configuration for theme-of-the-month feature
 const PHOTOGRAPHY_CHANNEL = process.env.PHOTOGRAPHY_CHANNEL || 'photography';
 const THEME_CHANNEL = process.env.THEME_CHANNEL || 'theme-of-the-month-submissions';
-const THEME_HASHTAG = process.env.THEME_HASHTAG || '#theme-of-the-month';
+const THEME_HASHTAG = process.env.THEME_HASHTAG ? process.env.THEME_HASHTAG.trim() : '#theme-of-the-month';
+console.log(`Theme hashtag set to: "${THEME_HASHTAG}"`);
 
 // Parse the configured emoji
 function parseEmoji(emojiStr) {
@@ -186,21 +187,41 @@ client.on('messageCreate', async (message) => {
   // Ignore bot messages
   if (message.author.bot) return;
 
+  // Debug: Log all messages in photography channel
+  if (message.channel.name === PHOTOGRAPHY_CHANNEL) {
+    console.log(`Message in photography channel: "${message.content}"`);
+    console.log(`Looking for hashtag: "${THEME_HASHTAG}"`);
+    console.log(`Hashtag found: ${message.content.includes(THEME_HASHTAG)}`);
+  }
+
   // Check if message is in the photography channel
-  if (message.channel.name !== PHOTOGRAPHY_CHANNEL) return;
+  if (message.channel.name !== PHOTOGRAPHY_CHANNEL) {
+    return;
+  }
 
   // Check if message contains the theme hashtag
-  if (!message.content.includes(THEME_HASHTAG)) return;
+  if (!message.content.includes(THEME_HASHTAG)) {
+    console.log('Hashtag not found in message');
+    return;
+  }
+
+  console.log('Hashtag found, proceeding with submission');
 
   // Skip if already submitted
-  if (themeSubmissions.has(message.id)) return;
+  if (themeSubmissions.has(message.id)) {
+    console.log('Message already submitted');
+    return;
+  }
 
   // Check if message has an image
   const image = getImageFromMessage(message);
   if (!image) {
-    // Optionally, notify the user that their submission needs an image
+    console.log('No image found in message');
+    // Notify the user that their submission needs an image
     return message.reply(`Your submission for ${THEME_HASHTAG} must include an image. Please try again.`);
   }
+
+  console.log('Image found, proceeding with submission');
 
   // Find theme channel
   const themeChannel = message.guild.channels.cache.find(
@@ -211,6 +232,8 @@ client.on('messageCreate', async (message) => {
     console.error(`Theme channel #${THEME_CHANNEL} not found in server: ${message.guild.name}`);
     return;
   }
+
+  console.log(`Theme channel found: #${THEME_CHANNEL}`);
 
   // Create theme submission embed
   const embed = new EmbedBuilder()
@@ -245,7 +268,7 @@ client.on('messageCreate', async (message) => {
     themeSubmissions.add(message.id);
     console.log(`Message ${message.id} submitted to theme channel in server: ${message.guild.name}`);
 
-    // Optionally, notify the user that their submission was successful
+    // Notify the user that their submission was successful
     message.reply(`Your submission for ${THEME_HASHTAG} has been posted in #${THEME_CHANNEL}!`);
   } catch (error) {
     console.error(`Error posting to theme channel in server ${message.guild.name}:`, error);
