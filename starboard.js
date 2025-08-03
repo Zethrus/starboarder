@@ -197,6 +197,12 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
+  // After defining the regex
+  console.log(`Looking for hashtag: "${THEME_HASHTAG}"`);
+  console.log(`Regex pattern: ${hashtagRegex}`);
+  console.log(`Message content: "${message.content}"`);
+  console.log(`Hashtag found: ${hashtagRegex.test(message.content)}`);
+
   // Skip if already submitted
   if (themeSubmissions.has(message.id)) {
     console.log('Message already submitted');
