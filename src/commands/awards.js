@@ -1,4 +1,4 @@
-// src/commands/award.js
+// src/commands/awards.js
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { readDb, writeDb, replyThenDelete } = require('../utils/helpers');
 
@@ -10,7 +10,7 @@ module.exports = {
     const subCommand = args.shift()?.toLowerCase();
 
     if (!subCommand) {
-      return replyThenDelete(message, 'Usage: `!award <create|delete|add|remove|display|top> ...`');
+      return replyThenDelete(message, 'Usage: `!award <create|delete|add|remove|display|top|list> ...`');
     }
 
     // --- SUBCOMMAND ROUTER ---
@@ -32,6 +32,9 @@ module.exports = {
         break;
       case 'top':
         await handleTopAwards(message);
+        break;
+      case 'list':
+        await handleListAwards(message);
         break;
       default:
         await replyThenDelete(message, `Unknown subcommand "${subCommand}".`);
@@ -270,6 +273,43 @@ async function handleTopAwards(message) {
     .setTitle('🏆 Awards Leaderboard')
     .setDescription(leaderboardEntries.join('\n'))
     .setTimestamp();
+
+  await message.channel.send({ embeds: [embed] });
+}
+
+/**
+ * Handles the "!award list" subcommand (Admin only).
+ * Lists all created awards and their linked roles.
+ * @param {Message} message
+ */
+async function handleListAwards(message) {
+  if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+    return replyThenDelete(message, 'You must be an Administrator to run this command.');
+  }
+
+  const db = readDb();
+  const awards = db.awards;
+
+  const embed = new EmbedBuilder()
+    .setColor(0x2ECC71) // Green color
+    .setTitle('📝 Available Awards List')
+    .setTimestamp();
+
+  if (!awards || Object.keys(awards).length === 0) {
+    embed.setDescription('No awards have been created yet. Use `!award create` to make one.');
+  } else {
+    embed.setDescription('Here are all the awards that have been created in the system:');
+    for (const [awardName, roleId] of Object.entries(awards)) {
+      const role = message.guild.roles.cache.get(roleId);
+      const roleName = role ? `@${role.name}` : '`Role Not Found`';
+      const capitalizedAwardName = awardName.charAt(0).toUpperCase() + awardName.slice(1);
+      embed.addFields({
+        name: `**${capitalizedAwardName}**`,
+        value: `Linked to role: ${roleName}`,
+        inline: false,
+      });
+    }
+  }
 
   await message.channel.send({ embeds: [embed] });
 }

@@ -30,6 +30,7 @@ module.exports = {
 
       .addFields(
         { name: '`!award <create|delete|add|remove>`', value: 'Manages the server\'s award system. (Admin only)', inline: false },
+        { name: '`!award list`', value: 'Lists all created awards available to be given. (Admin only)', inline: false },
         { name: '`!move <#channel> <message_id> [reason]`', value: 'Moves a message with an image/video to another channel.', inline: false },
         { name: '`!setup-reactions`', value: 'Posts the message for self-assigning age roles. (Admin only)', inline: false },
         { name: '`!purge-users`', value: 'Manually runs the purge check for unverified members. (Admin only)', inline: false },
@@ -37,7 +38,7 @@ module.exports = {
         { name: '`!backfill-joins`', value: 'One-time command to log join dates for existing members. (Admin only)', inline: false },
       )
 
-      .setFooter({ text: `UrbexWarden v1.2 | For feature help, ask an admin.` })
+      .setFooter({ text: `UrbexWarden v1.1 | For feature help, ask an admin.` })
       .setTimestamp();
 
     try {
