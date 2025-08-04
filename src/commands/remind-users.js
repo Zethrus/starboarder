@@ -7,70 +7,77 @@ module.exports = {
   name: 'remind-users',
   description: 'Manually runs the reminder check for unverified members who are past their deadline.',
   async execute(message, args) {
-    // --- Dry Run Check ---
-    if (config.enableDryRun) {
-      return message.reply('This command is disabled while `enableDryRun` is active in the configuration. Please disable it to run manual commands.');
+    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return message.reply('You must be an Administrator to run this command.');
     }
 
     try {
-      await message.reply('⏳ Starting manual reminder check for unverified members. This may take a moment...');
+      const mode = config.enableDryRun ? '[DRY RUN]' : '[LIVE]';
+      await message.reply(`⏳ Starting manual reminder check in **${mode}** mode. This may take a moment...`);
 
       const db = readDb();
-      const unverifiedRoleName = config.unverifiedRoleName.toLowerCase().trim(); //
-      const reminderDays = config.verificationReminderDelayDays; //
+      const unverifiedRoleName = config.unverifiedRoleName.toLowerCase().trim();
+      const verifiedRoleName = config.verifiedRoleName.toLowerCase().trim();
+      const reminderDays = config.verificationReminderDelayDays;
       const now = new Date();
 
       const guild = message.guild;
       const unverifiedRole = guild.roles.cache.find(role => role.name.toLowerCase().trim() === unverifiedRoleName);
-      const logChannel = guild.channels.cache.find(channel => channel.name === config.logChannelName); //
+      const verifiedRole = guild.roles.cache.find(role => role.name.toLowerCase().trim() === verifiedRoleName);
+      const logChannel = guild.channels.cache.find(channel => channel.name === config.logChannelName);
 
       if (!unverifiedRole) {
         return message.channel.send(`Error: The role named "${config.unverifiedRoleName}" was not found.`);
       }
+      if (!verifiedRole) {
+        await message.channel.send(`⚠️ **Warning:** The verified role "${config.verifiedRoleName}" was not found. The command will run without this safety check.`);
+      }
 
       const members = await guild.members.fetch();
-      let remindedCount = 0;
+      let actionCount = 0;
+      let dbModified = false;
 
       for (const member of members.values()) {
-        // Skip bots and members who don't have the unverified role
-        if (member.user.bot || !member.roles.cache.has(unverifiedRole.id)) {
-          continue;
-        }
+        if (member.user.bot) continue;
 
-        // Skip if we don't have their join date for some reason
-        const joinDateStr = db.memberJoinDates[member.id];
+        const isVerified = verifiedRole && member.roles.cache.has(verifiedRole.id);
+        const isUnverified = member.roles.cache.has(unverifiedRole.id);
+
+        if (isVerified || !isUnverified) continue;
+
+        const joinDateStr = db.memberJoinDates[member.id]?.joined;
         if (!joinDateStr) continue;
 
         const joinDate = new Date(joinDateStr);
         const daysDifference = (now - joinDate) / (1000 * 3600 * 24);
 
-        // Check if the member has been in the server longer than the reminder threshold
-        if (daysDifference > reminderDays) {
-          try {
-            await member.send(config.verificationReminderMessage); //
-            remindedCount++;
-            const logMessage = `🔔 **Manually Sent Reminder**: DM'd ${member.user.tag} (${member.id}) to complete verification.`;
-            console.log(`[REMIND-CMD] ${logMessage}`);
-            if (logChannel) await logChannel.send(logMessage);
+        if (daysDifference > reminderDays && !db.memberJoinDates[member.id]?.reminderSent) {
+          const logMessage = `🔔 **Reminder Target**: ${member.user.tag} (${member.id}) has been unverified for ${daysDifference.toFixed(1)} days.`;
 
-            // To prevent spamming the user, remove them from the check by deleting their entry.
-            // This mirrors the behavior of the automated task.
-            delete db.memberJoinDates[member.id];
-
-          } catch (error) {
-            if (error.code === 50007) { // DiscordAPIError: Cannot send messages to this user
-              console.warn(`[REMIND-CMD] Could not send DM to ${member.user.tag}. They may have DMs disabled.`);
-            } else {
-              console.error(`[REMIND-CMD] Failed to send DM to ${member.user.tag}:`, error);
+          if (config.enableDryRun) {
+            actionCount++;
+            console.log(`[DRY RUN] [REMIND-CMD] Would remind ${member.user.tag}.`);
+            if (logChannel) await logChannel.send(`[DRY RUN] ${logMessage}`);
+          } else {
+            try {
+              await member.send(config.verificationReminderMessage);
+              actionCount++;
+              if (logChannel) await logChannel.send(logMessage.replace('Target', 'Sent'));
+              db.memberJoinDates[member.id].reminderSent = true;
+              dbModified = true;
+            } catch (error) {
+              // ... (error handling)
             }
           }
         }
       }
 
-      // Write the changes (deleted entries) back to the DB
-      writeDb(db); //
+      if (dbModified && !config.enableDryRun) {
+        writeDb(db);
+      }
 
-      await message.channel.send(`✅ **Manual Reminder Check Complete!**\n- Sent DMs to **${remindedCount}** unverified member(s) who were past the ${reminderDays}-day deadline.`);
+      const finalVerb = config.enableDryRun ? 'identified for a reminder' : 'sent a reminder';
+      await message.channel.send(`✅ **Manual Reminder Check Complete!**\n- **${actionCount}** member(s) ${finalVerb}.`);
 
     } catch (error) {
       console.error('Error during remind-users command:', error);

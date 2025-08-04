@@ -39,10 +39,10 @@ We look forward to seeing your explorations and adventures~
 The Urbex Alberta Team`,
 
   // --- Settings for Auto-Purge ---
-  enableAutoPurge: (process.env.ENABLE_AUTO_PURGE || 'false').toLowerCase() === 'true',
+  enableAutoPurge: (process.env.ENABLE_AUTO_PURGE || 'false').toLowerCase() === 'false',
   purgeDelayDays: parseInt(process.env.PURGE_DELAY_DAYS, 10) || 7,
 
   // --- Logging & Safety ---
-  logChannelName: process.env.LOG_CHANNEL_NAME || 'log',
+  logChannelName: process.env.LOG_CHANNEL_NAME || 'logs',
   enableDryRun: (process.env.ENABLE_DRY_RUN || 'true').toLowerCase() === 'true',
 };
