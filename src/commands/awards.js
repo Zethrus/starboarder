@@ -128,7 +128,10 @@ async function handleTopAwards(interaction) {
   const totals = Object.entries(userAwards).map(([userId, awards]) => {
     const totalCount = Object.values(awards).reduce((sum, count) => sum + count, 0);
     return { userId, totalCount };
-  });
+  }).filter(entry => entry.totalCount > 0); // Filter out users with 0 awards
+  if (totals.length === 0) {
+    return interaction.reply({ content: 'No one has been given any awards yet.' });
+  }
   totals.sort((a, b) => b.totalCount - a.totalCount);
   const top10 = totals.slice(0, 10);
   const leaderboardEntries = await Promise.all(
@@ -204,7 +207,7 @@ module.exports = {
         .setName('remove')
         .setDescription('Removes an award from a user.')
         .addStringOption(option => option.setName('name').setDescription('The name of the award.').setRequired(true))
-        .addUserOption(option => option.setName('user').setDescription('The user to remove the award from.').setRequired(true))
+        .addUserOption(option => option.setName('user').setDescription('The user to remove the award from').setRequired(true))
     )
     .addSubcommand(subcommand =>
       subcommand
