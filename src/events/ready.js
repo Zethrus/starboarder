@@ -1,7 +1,7 @@
 // src/events/ready.js
-const { Events, PermissionFlagsBits } = require('discord.js'); // <-- Add PermissionFlagsBits
+const { Events, PermissionFlagsBits } = require('discord.js');
 const config = require('../../config');
-const { readDb, writeDb } = require('../utils/helpers'); // <-- Add writeDb
+const { readDb, writeDb } = require('../utils/helpers');
 
 // Helper function to format emoji for display
 function formatEmoji(emoji) {
@@ -24,7 +24,7 @@ async function checkUnverifiedMembers(client) {
     return;
   }
 
-  const unverifiedRoleName = config.unverifiedRoleName.toLowerCase();
+  const unverifiedRoleName = config.unverifiedRoleName.toLowerCase().trim();
   const reminderDays = config.verificationReminderDelayDays;
   const purgeDays = config.purgeDelayDays;
   const now = new Date();
@@ -33,13 +33,14 @@ async function checkUnverifiedMembers(client) {
   const CHECK_INTERVAL = 24 * 60 * 60 * 1000;
 
   for (const guild of client.guilds.cache.values()) {
-    const unverifiedRole = guild.roles.cache.find(role => role.name.toLowerCase() === unverifiedRoleName);
+    const unverifiedRole = guild.roles.cache.find(role => role.name.toLowerCase().trim() === unverifiedRoleName);
+    const logChannel = guild.channels.cache.find(channel => channel.name === config.logChannelName);
+
     if (!unverifiedRole) {
       console.warn(`[TASK] Unverified role "${config.unverifiedRoleName}" not found in guild "${guild.name}". Skipping.`);
       continue;
     }
 
-    // Check if the bot has Kick Members permission before proceeding with purge checks
     const canKick = guild.members.me.permissions.has(PermissionFlagsBits.KickMembers);
     if (config.enableAutoPurge && !canKick) {
       console.error(`[TASK] Auto-purge is enabled, but I do not have the "Kick Members" permission in "${guild.name}". Purge check will be skipped.`);
@@ -61,9 +62,12 @@ async function checkUnverifiedMembers(client) {
       // --- PURGE LOGIC ---
       if (config.enableAutoPurge && canKick && daysDifference > purgeDays) {
         try {
-          await member.kick(`Auto-purged for not completing verification within ${purgeDays} days.`);
-          console.log(`[TASK] Purged (kicked) user ${member.user.tag} for being unverified for over ${purgeDays} days.`);
-          // Delete their record so they aren't checked again unless they rejoin.
+          const kickReason = `Auto-purged for not completing verification within ${purgeDays} days.`;
+          await member.kick(kickReason);
+          const logMessage = `👢 **Auto-Purged User**: ${member.user.tag} (${member.id})\n**Reason**: ${kickReason}`;
+          console.log(`[TASK] ${logMessage.replace(/\n/g, ' ')}`);
+          if (logChannel) await logChannel.send(logMessage);
+
           delete db.memberJoinDates[member.id];
         } catch (error) {
           console.error(`[TASK] Failed to kick ${member.user.tag}:`, error);
@@ -73,13 +77,14 @@ async function checkUnverifiedMembers(client) {
       } else if (daysDifference > reminderDays) {
         try {
           await member.send(config.verificationReminderMessage);
-          console.log(`[TASK] Sent verification reminder to ${member.user.tag}.`);
+          const logMessage = `🔔 **Sent Reminder**: DM'd ${member.user.tag} (${member.id}) to complete verification.`;
+          console.log(`[TASK] ${logMessage}`);
+          if (logChannel) await logChannel.send(logMessage);
 
-          // To prevent spamming the user, remove them from the check by deleting their entry.
           delete db.memberJoinDates[member.id];
 
         } catch (error) {
-          if (error.code === 50007) { // DiscordAPIError: Cannot send messages to this user
+          if (error.code === 50007) {
             console.warn(`[TASK] Could not send DM to ${member.user.tag}. They may have DMs disabled.`);
           } else {
             console.error(`[TASK] Failed to send DM to ${member.user.tag}:`, error);
@@ -88,7 +93,6 @@ async function checkUnverifiedMembers(client) {
       }
     }
   }
-  // Write the changes (deleted entries) back to the DB
   writeDb(db);
 }
 
@@ -121,7 +125,6 @@ module.exports = {
     console.log(guildInfo.join('\n'));
 
     // --- SCHEDULED TASK ---
-    // Run the check once on startup, then every 24 hours.
     checkUnverifiedMembers(client);
     setInterval(() => checkUnverifiedMembers(client), 24 * 60 * 60 * 1000);
   },
