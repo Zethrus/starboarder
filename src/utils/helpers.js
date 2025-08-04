@@ -1,14 +1,15 @@
 // src/utils/helpers.js
 const fs = require('node:fs');
 const path = require('node:path');
-const config = require('../../config'); // <-- ADD THIS LINE
+const config = require('../../config');
 
 // --- DATABASE HELPERS ---
 const dbPath = path.join(__dirname, '..', '..', 'db.json');
 const defaultDbStructure = {
   awards: {},
   userAwards: {},
-  reactionRoleMessageId: null
+  reactionRoleMessageId: null,
+  memberJoinDates: {}, // <-- ADD THIS LINE
 };
 
 /**
@@ -18,7 +19,20 @@ const defaultDbStructure = {
 function initializeDb() {
   if (!fs.existsSync(dbPath)) {
     console.log('[DB] Database file not found. Creating a new one...');
-    writeDb(defaultDbStructure);
+    const db = readDb(); // Read to get a valid structure (even if default)
+    // Ensure the new structure property exists if db.json was from an older version
+    if (!db.memberJoinDates) {
+      db.memberJoinDates = {};
+    }
+    writeDb(db);
+  } else {
+    // Also handle case where db.json exists but is from an older version
+    const db = readDb();
+    if (db.memberJoinDates === undefined) {
+      console.log('[DB] Adding new `memberJoinDates` property to existing database.');
+      db.memberJoinDates = {};
+      writeDb(db);
+    }
   }
 }
 
@@ -32,7 +46,8 @@ function readDb() {
     return JSON.parse(data);
   } catch (error) {
     console.error("Fatal error reading from database. Returning default structure.", error);
-    return defaultDbStructure;
+    // Return a copy to prevent modification of the original default structure
+    return JSON.parse(JSON.stringify(defaultDbStructure));
   }
 }
 
@@ -93,9 +108,9 @@ function formatEmoji(emoji) {
  * Sends a reply to a message and then deletes the reply after a specified time.
  * @param {Message} message The message to reply to.
  * @param {string} content The content of the reply.
- * @param {number} [delay=5000] The time in milliseconds to wait before deleting the reply.
+ * @param {number} [delay=config.replyDeleteDelay] The time in milliseconds to wait before deleting the reply.
  */
-async function replyThenDelete(message, content, delay = config.replyDeleteDelay) { // <-- MODIFY THIS LINE
+async function replyThenDelete(message, content, delay = config.replyDeleteDelay) {
   try {
     const reply = await message.reply(content);
     setTimeout(() => {
