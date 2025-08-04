@@ -10,45 +10,43 @@ const defaultDbStructure = {
   userAwards: {},
   reactionRoleMessageId: null,
   memberJoinDates: {},
-  starboardPosts: {},
+  starboardPosts: {}, // <-- RENAMED AND WILL STORE { originalMsgId: starboardMsgId }
 };
 
 /**
- * Checks if the database file exists and initializes it with default values if needed.
- * This also handles migrating the DB from older structures.
- * This should be run once at bot startup within an async context (e.g., ready event).
+ * Checks if the database file exists, and creates it with a default structure if it doesn't.
+ * This should be run once at bot startup.
  */
-async function initializeDb() {
-  console.log('[DB] Initializing and verifying database...');
-  const db = await readDb(); // readDb already handles file creation
-  let dbModified = false;
-
-  // Check for and add missing top-level properties
-  for (const key in defaultDbStructure) {
-    if (db[key] === undefined) {
-      console.log(`[DB] Initializing missing property: '${key}'`);
-      db[key] = defaultDbStructure[key];
+function initializeDb() {
+  if (!fs.existsSync(dbPath)) {
+    console.log('[DB] Database file not found. Creating a new one...');
+    writeDb(JSON.parse(JSON.stringify(defaultDbStructure)));
+  } else {
+    // Also handle case where db.json exists but is from an older version
+    const db = await readDb();
+    let dbModified = false;
+    if (db.memberJoinDates === undefined) {
+      console.log('[DB] Adding new `memberJoinDates` property to existing database.');
+      db.memberJoinDates = {};
       dbModified = true;
     }
-  }
-
-  // --- MIGRATION LOGIC ---
-  // Example migration from a hypothetical old property
-  if (db.starredMessageIds !== undefined) {
-    console.log('[DB] Migrating `starredMessageIds` to `starboardPosts`.');
-    delete db.starredMessageIds;
-    db.starboardPosts = {}; // Ensure it's clean
-    dbModified = true;
-  }
-
-  if (dbModified) {
-    console.log('[DB] Database was modified, saving changes...');
-    await writeDb(db);
-  } else {
-    console.log('[DB] Database structure is up to date.');
+    // Migration from the previous starboard implementation
+    if (db.starredMessageIds !== undefined) {
+      console.log('[DB] Migrating `starredMessageIds` to `starboardPosts`.');
+      delete db.starredMessageIds;
+      db.starboardPosts = {};
+      dbModified = true;
+    }
+    if (db.starboardPosts === undefined) {
+      console.log('[DB] Adding new `starboardPosts` property to existing database.');
+      db.starboardPosts = {};
+      dbModified = true;
+    }
+    if (dbModified) {
+      await writeDb(db);
+    }
   }
 }
-
 
 /**
  * Reads the entire database from db.json.
@@ -60,8 +58,7 @@ async function readDb() {
     return JSON.parse(data);
   } catch (error) {
     if (error.code === 'ENOENT') { // File doesn't exist
-      console.log("[DB] Database file not found. Creating and returning default structure.");
-      await writeDb(JSON.parse(JSON.stringify(defaultDbStructure)));
+      console.log("[DB] Database file not found. Returning default structure.");
       return JSON.parse(JSON.stringify(defaultDbStructure));
     }
     console.error("Fatal error reading from database. Returning default structure.", error);
@@ -73,9 +70,9 @@ async function readDb() {
  * Writes an object to the database file.
  * @param {object} data The data object to write to the database.
  */
-async function writeDb(data) {
+async function writeDb(data) { 
   try {
-    await fs.writeFile(dbPath, JSON.stringify(data, null, 2));
+    await fs.writeFile(dbPath, JSON.stringify(data, null, 2)); 
   } catch (error) {
     console.error("Error writing to database:", error);
   }

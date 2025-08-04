@@ -1,7 +1,7 @@
 // src/events/ready.js
 const { Events, PermissionFlagsBits } = require('discord.js');
 const config = require('../../config');
-const { readDb, writeDb, initializeDb } = require('../utils/helpers');
+const { readDb, writeDb } = require('../utils/helpers');
 
 // Helper function to format emoji for display
 function formatEmoji(emoji) {
@@ -14,7 +14,7 @@ function formatEmoji(emoji) {
 
 /**
  * Checks for unverified members, sends reminders, and purges if configured.
- * @param {import('discord.js').Client} client The Discord client instance.
+ * @param {Client} client The Discord client instance.
  */
 async function checkUnverifiedMembers(client) {
   const mode = config.enableDryRun ? '[DRY RUN]' : '[LIVE]';
@@ -105,16 +105,13 @@ async function checkUnverifiedMembers(client) {
 }
 
 
-/**
- * Converts old string-based join dates in the database to the new object structure.
- * This is a one-time migration check that runs on startup.
- */
-async function upgradeMemberTracking() {
+// We also need to fix the database structure for tracking.
+function initializeDbAndTracking() {
   const db = await readDb();
   let modified = false;
 
-  // This check is important to avoid errors on a fresh database
-  if (!db.memberJoinDates) {
+  // Ensure memberJoinDates exists
+  if (db.memberJoinDates === undefined) {
     db.memberJoinDates = {};
     modified = true;
   }
@@ -141,21 +138,15 @@ async function upgradeMemberTracking() {
 module.exports = {
   name: Events.ClientReady,
   once: true,
-  // Make the execute function async
-  async execute(client) {
+  execute(client) {
     console.log(`Logged in as ${client.user.tag}`);
-
-    // --- DATABASE INITIALIZATION ---
-    // This now runs first inside an async context
-    await initializeDb();
-    await upgradeMemberTracking();
-    // -----------------------------
-
-
     console.log(`Configuration:`);
     console.log(`- Starboard Channel: #${config.starboardChannel}`);
     console.log(`- Required Stars: ${config.requiredStars}`);
     // ... other logs
+
+    // Initialize/Upgrade DB structure
+    initializeDbAndTracking();
 
     // Get server information
     const guilds = client.guilds.cache;
