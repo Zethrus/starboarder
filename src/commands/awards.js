@@ -10,7 +10,7 @@ module.exports = {
     const subCommand = args.shift()?.toLowerCase();
 
     if (!subCommand) {
-      return replyThenDelete(message, 'Usage: `!award <create|delete|add|remove|display> ...`');
+      return replyThenDelete(message, 'Usage: `!award <create|delete|add|remove|display|top> ...`');
     }
 
     // --- SUBCOMMAND ROUTER ---
@@ -29,6 +29,9 @@ module.exports = {
         break;
       case 'display':
         await handleDisplayAwards(message, args);
+        break;
+      case 'top': // <-- NEW SUBCOMMAND
+        await handleTopAwards(message);
         break;
       default:
         await replyThenDelete(message, `Unknown subcommand "${subCommand}".`);
@@ -210,5 +213,51 @@ async function handleDisplayAwards(message, args) {
       embed.addFields({ name: awardName, value: `🏆 x ${count}`, inline: true });
     }
   }
+  await message.channel.send({ embeds: [embed] });
+}
+
+/**
+ * Handles the "!award top" subcommand.
+ * Displays a leaderboard of users with the most awards.
+ * @param {Message} message
+ */
+async function handleTopAwards(message) {
+  const db = readDb();
+  const userAwards = db.userAwards;
+
+  if (!userAwards || Object.keys(userAwards).length === 0) {
+    return message.reply('No one has been given any awards yet.');
+  }
+
+  // 1. Calculate total awards for each user
+  const totals = Object.entries(userAwards).map(([userId, awards]) => {
+    const totalCount = Object.values(awards).reduce((sum, count) => sum + count, 0);
+    return { userId, totalCount };
+  });
+
+  // 2. Sort by total awards descending
+  totals.sort((a, b) => b.totalCount - a.totalCount);
+
+  // 3. Get the top 10
+  const top10 = totals.slice(0, 10);
+
+  // 4. Fetch user details and format the leaderboard string
+  const leaderboardEntries = await Promise.all(
+    top10.map(async (entry, index) => {
+      try {
+        const user = await message.client.users.fetch(entry.userId);
+        return `**${index + 1}.** ${user.tag} - **${entry.totalCount}** Awards`;
+      } catch {
+        return `**${index + 1}.** *Unknown User (${entry.userId})* - **${entry.totalCount}** Awards`;
+      }
+    })
+  );
+
+  const embed = new EmbedBuilder()
+    .setColor(0xF1C40F) // Gold color
+    .setTitle('🏆 Awards Leaderboard')
+    .setDescription(leaderboardEntries.join('\n'))
+    .setTimestamp();
+
   await message.channel.send({ embeds: [embed] });
 }
