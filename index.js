@@ -3,6 +3,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const config = require('./config');
+const { initializeDb } = require('./src/utils/helpers');
+
+// --- DATABASE INITIALIZATION ---
+// This runs once at startup to ensure the db.json file exists.
+initializeDb();
+// -----------------------------
 
 // Create a new client instance
 const client = new Client({

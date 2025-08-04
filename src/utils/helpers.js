@@ -4,6 +4,22 @@ const path = require('node:path');
 
 // --- DATABASE HELPERS ---
 const dbPath = path.join(__dirname, '..', '..', 'db.json');
+const defaultDbStructure = {
+  awards: {},
+  userAwards: {},
+  reactionRoleMessageId: null
+};
+
+/**
+ * Checks if the database file exists, and creates it with a default structure if it doesn't.
+ * This should be run once at bot startup.
+ */
+function initializeDb() {
+  if (!fs.existsSync(dbPath)) {
+    console.log('[DB] Database file not found. Creating a new one...');
+    writeDb(defaultDbStructure);
+  }
+}
 
 /**
  * Reads the entire database from db.json.
@@ -14,9 +30,8 @@ function readDb() {
     const data = fs.readFileSync(dbPath, 'utf8');
     return JSON.parse(data);
   } catch (error) {
-    console.error("Error reading from database:", error);
-    // If the file doesn't exist or is corrupted, return a default structure
-    return { awards: {}, userAwards: {} };
+    console.error("Fatal error reading from database. Returning default structure.", error);
+    return defaultDbStructure;
   }
 }
 
@@ -33,7 +48,7 @@ function writeDb(data) {
 }
 
 
-// --- MESSAGE & EMOJI HELPERS (from previous step) ---
+// --- MESSAGE & EMOJI HELPERS ---
 
 /**
  * Extracts an image URL from a message.
@@ -44,25 +59,19 @@ function writeDb(data) {
  */
 function getImageFromMessage(message, enforceSingleImage = false) {
   const images = [];
-
-  // Check attachments
   message.attachments.forEach(att => {
     if (att.contentType && att.contentType.startsWith('image/')) {
       images.push(att.url);
     }
   });
-
-  // Check embeds
   message.embeds.forEach(embed => {
     if (embed.image) images.push(embed.image.url);
     if (embed.thumbnail) images.push(embed.thumbnail.url);
   });
-
   if (enforceSingleImage && images.length !== 1) {
     console.log(`Image check failed: Found ${images.length} images, but exactly 1 was required.`);
     return null;
   }
-
   return images.length > 0 ? images[0] : null;
 }
 
@@ -98,6 +107,7 @@ async function replyThenDelete(message, content, delay = 5000) {
 
 
 module.exports = {
+  initializeDb,
   readDb,
   writeDb,
   getImageFromMessage,
