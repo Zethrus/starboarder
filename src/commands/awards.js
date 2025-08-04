@@ -2,7 +2,7 @@
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { readDb, writeDb, replyThenDelete } = require('../utils/helpers');
 
-module.exports = {
+module.hexports = {
   name: 'award',
   description: 'Manages the award system.',
   async execute(message, args) {
@@ -30,7 +30,7 @@ module.exports = {
       case 'display':
         await handleDisplayAwards(message, args);
         break;
-      case 'top': // <-- NEW SUBCOMMAND
+      case 'top':
         await handleTopAwards(message);
         break;
       default:
@@ -198,20 +198,32 @@ async function handleRemoveAward(message, args) {
 async function handleDisplayAwards(message, args) {
   const user = message.mentions.users.first() || message.author;
   const db = readDb();
-  const userAwards = db.userAwards[user.id];
+  const userAwardsData = db.userAwards[user.id];
 
   const embed = new EmbedBuilder()
     .setColor(0x3498DB) // Blue color
-    .setAuthor({ name: `${user.username}'s Awards`, iconURL: user.displayAvatarURL() });
+    .setAuthor({ name: `${user.username}'s Trophy Case`, iconURL: user.displayAvatarURL() })
+    .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }));
 
-  if (!userAwards || Object.keys(userAwards).length === 0) {
-    embed.setDescription('This user has no awards yet.');
+  if (!userAwardsData || Object.keys(userAwardsData).length === 0) {
+    embed.setDescription('This trophy case is empty. Go out and earn some awards!');
   } else {
-    const sortedAwards = Object.entries(userAwards).sort((a, b) => b[1] - a[1]);
+    // Sort awards by count descending, then alphabetically
+    const sortedAwards = Object.entries(userAwardsData).sort((a, b) => {
+      if (b[1] !== a[1]) {
+        return b[1] - a[1];
+      }
+      return a[0].localeCompare(b[0]);
+    });
+
     embed.setDescription('Here is a list of all awards they have earned:');
-    for (const [awardName, count] of sortedAwards) {
-      embed.addFields({ name: awardName, value: `🏆 x ${count}`, inline: true });
-    }
+
+    // Using a single field for a cleaner, list-like appearance
+    const awardsString = sortedAwards
+      .map(([awardName, count]) => `🏆 **${awardName.charAt(0).toUpperCase() + awardName.slice(1)}** (x${count})`)
+      .join('\n');
+
+    embed.addFields({ name: 'Collected Awards', value: awardsString });
   }
   await message.channel.send({ embeds: [embed] });
 }
