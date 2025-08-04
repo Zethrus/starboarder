@@ -1,4 +1,3 @@
-// src/commands/help.js
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const config = require('../../config');
 
@@ -31,7 +30,7 @@ module.exports = {
       .addFields({ name: '\u200B', value: '__**General Commands**__' }) // Spacer and section title
 
       .addFields(
-        { name: '`/award display [@user]`', value: 'Shows the awards earned by you or another user in a "Trophy Case" embed.', inline: true },
+        { name: '`/award display [@user]`', value: 'Shows the awards earned by you or another bot in a "Trophy Case" embed.', inline: true },
         { name: '`/award top`', value: 'Displays the server-wide awards leaderboard.', inline: true },
         { name: '`/help`', value: 'Displays this help message.', inline: true },
       )
@@ -41,6 +40,7 @@ module.exports = {
       .addFields(
         { name: '`/award <create|delete|add|remove>`', value: 'Manages the server\'s award system. (Admin only)', inline: false },
         { name: '`/award list`', value: 'Lists all created awards available to be given. (Admin only)', inline: false },
+        { name: '`/award create <name> <role> [image]`', value: 'Creates a new award with an optional image URL linked to a role. (Admin only)', inline: false },
         { name: '`/move <#channel> <message_id> [reason]`', value: 'Moves a message with an image/video to another channel.', inline: false },
         { name: '`/setup-reactions`', value: 'Posts the message for self-assigning age roles. (Admin only)', inline: false },
         { name: '`/purge-users`', value: 'Manually runs the purge check for unverified members. (Admin only)', inline: false },
