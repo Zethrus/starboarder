@@ -1,6 +1,7 @@
 // src/events/interactionCreate.js
 const { Events, MessageFlags } = require('discord.js');
 const { ROLE_BUTTON_CONFIG } = require('../commands/setup-reactions.js');
+const config = require('../../config'); // <-- ADD THIS
 
 // Create a Set of all possible age role names for quick lookups
 const allAgeRoleNames = new Set(ROLE_BUTTON_CONFIG.map(config => config.roleName));
@@ -21,12 +22,12 @@ module.exports = {
     try {
       const member = interaction.member;
       const guildRoles = interaction.guild.roles.cache;
+      const logChannel = interaction.guild.channels.cache.find(channel => channel.name === config.logChannelName); // <-- ADD THIS
 
       // Find the role object the user wants to add
       const roleToAdd = guildRoles.find(r => r.name === roleNameToAdd);
       if (!roleToAdd) {
         console.error(`[REACTIONS] Role "${roleNameToAdd}" not found on the server.`);
-        // CORRECTED: Using flags instead of ephemeral: true
         await interaction.reply({ content: 'An error occurred: The role for this button could not be found.', flags: [MessageFlags.Ephemeral] });
         return;
       }
@@ -43,17 +44,17 @@ module.exports = {
       await member.roles.add(roleToAdd);
 
       // Send a private confirmation message
-      // CORRECTED: Using flags instead of ephemeral: true
       await interaction.reply({
         content: `You have been given the **${roleToAdd.name}** role!`,
         flags: [MessageFlags.Ephemeral]
       });
 
+      const logMessage = `👤 **Role Update**: ${interaction.user.tag} self-assigned the **${roleToAdd.name}** role.`; // <-- ADD THIS
       console.log(`[REACTIONS] Assigned role "${roleToAdd.name}" to user ${interaction.user.tag}.`);
+      if (logChannel) await logChannel.send(logMessage); // <-- ADD THIS
 
     } catch (error) {
       console.error('Error handling reaction role update:', error);
-      // CORRECTED: Using flags instead of ephemeral: true
       await interaction.reply({ content: 'Sorry, there was an error trying to update your roles. Please try again later.', flags: [MessageFlags.Ephemeral] });
     }
   },

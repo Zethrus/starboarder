@@ -39,10 +39,11 @@ async function handleStarboard(reaction, user) {
   const image = getImageFromMessage(message);
   if (!image) return;
 
-  // Find starboard channel
+  // Find starboard and log channels
   const starboardChannel = message.guild.channels.cache.find(
     channel => channel.name === config.starboardChannel && channel.isTextBased()
   );
+  const logChannel = message.guild.channels.cache.find(channel => channel.name === config.logChannelName); // <-- ADD THIS
 
   if (!starboardChannel) {
     console.error(`Starboard channel #${config.starboardChannel} not found in server: ${message.guild.name}`);
@@ -71,7 +72,9 @@ async function handleStarboard(reaction, user) {
   try {
     await starboardChannel.send({ embeds: [embed] });
     starredMessages.add(message.id);
+    const logMessage = `⭐ **New Starboard Post**: Message by ${message.author.tag} in ${message.channel} reached the threshold with ${starCount} stars.`;
     console.log(`Message ${message.id} posted to starboard in server: ${message.guild.name}`);
+    if (logChannel) await logChannel.send(logMessage); // <-- ADD THIS
   } catch (error) {
     console.error(`Error posting to starboard in server ${message.guild.name}:`, error);
   }

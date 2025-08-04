@@ -27,10 +27,11 @@ async function handleThemeSubmission(message) {
     return replyThenDelete(message, `Your submission for ${hashtag} must include exactly one image. Please try again.`);
   }
 
-  // Find theme channel
+  // Find theme and log channels
   const themeChannel = message.guild.channels.cache.find(
     channel => channel.name === config.themeChannel && channel.isTextBased()
   );
+  const logChannel = message.guild.channels.cache.find(channel => channel.name === config.logChannelName); // <-- ADD THIS
 
   if (!themeChannel) {
     console.error(`Theme channel #${config.themeChannel} not found in server: ${message.guild.name}`);
@@ -60,9 +61,11 @@ async function handleThemeSubmission(message) {
 
   // Post to theme channel
   try {
-    await themeChannel.send({ embeds: [embed] });
+    const sentMessage = await themeChannel.send({ embeds: [embed] }); // <-- MODIFY THIS
     themeSubmissions.add(message.id);
+    const logMessage = `🎨 **New Theme Submission**: ${message.author.tag} submitted an entry for ${hashtag}. [Jump to submission](${sentMessage.url})`;
     console.log(`Message ${message.id} submitted to theme channel in server: ${message.guild.name}`);
+    if (logChannel) await logChannel.send(logMessage); // <-- ADD THIS
     await replyThenDelete(message, `Your submission for ${hashtag} has been posted in #${config.themeChannel}!`);
   } catch (error) {
     console.error(`Error posting to theme channel in server ${message.guild.name}:`, error);
