@@ -4,15 +4,14 @@ const { readDb, writeDb, replyThenDelete } = require('../utils/helpers');
 const config = require('../../config');
 
 // --- CONFIGURATION FOR ROLE BUTTONS ---
-// IMPORTANT: The 'roleName' MUST EXACTLY MATCH the name of a role on your server.
 const ROLE_BUTTON_CONFIG = [
-  { emoji: '🔵', label: '16-17', roleName: '16-17', style: ButtonStyle.Secondary },
-  { emoji: '🟢', label: '18-20', roleName: '18-20', style: ButtonStyle.Secondary },
-  { emoji: '🟣', label: '21-24', roleName: '21-24', style: ButtonStyle.Secondary },
-  { emoji: '🟠', label: '25-29', roleName: '25-29', style: ButtonStyle.Secondary },
-  { emoji: '⚪', label: '30-34', roleName: '30-34', style: ButtonStyle.Secondary },
-  { emoji: '🔴', label: '35-39', roleName: '35-39', style: ButtonStyle.Secondary },
-  { emoji: '🟤', label: '40+', roleName: '40+', style: ButtonStyle.Secondary },
+  { emoji: '鳩', label: '16-17', roleName: '16-17', style: ButtonStyle.Secondary },
+  { emoji: '泙', label: '18-20', roleName: '18-20', style: ButtonStyle.Secondary },
+  { emoji: '泪', label: '21-24', roleName: '21-24', style: ButtonStyle.Secondary },
+  { emoji: '泛', label: '25-29', roleName: '25-29', style: ButtonStyle.Secondary },
+  { emoji: '笞ｪ', label: '30-34', roleName: '30-34', style: ButtonStyle.Secondary },
+  { emoji: '閥', label: '35-39', roleName: '35-39', style: ButtonStyle.Secondary },
+  { emoji: '洟', label: '40+', roleName: '40+', style: ButtonStyle.Secondary },
   { emoji: '🗑️', label: 'Clear Role', roleName: 'clear_age_role', style: ButtonStyle.Danger },
 ];
 // -----------------------------------------
@@ -21,28 +20,27 @@ module.exports = {
   name: 'setup-reactions',
   description: 'Sets up the reaction role message in the specified channel.',
   async execute(message, args) {
-    // Only allow administrators to run this command
     if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
       return replyThenDelete(message, 'You must be an Administrator to run this command.');
     }
-
-    // Check if the bot has the Manage Roles permission
     if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
-      return replyThenDelete(message, 'I need the "Manage Roles" permission to automatically create the necessary roles.');
+      return replyThenDelete(message, 'I need the "Manage Roles" permission to automatically create roles.');
     }
 
     const targetChannel = message.guild.channels.cache.find(
       channel => channel.name === config.reactionRoleChannel
     );
-
     if (!targetChannel) {
-      return replyThenDelete(message, `The channel #${config.reactionRoleChannel} was not found. Please check the .env configuration.`);
+      return replyThenDelete(message, `The channel #${config.reactionRoleChannel} was not found.`);
     }
 
     try {
       // --- AUTOMATIC ROLE CREATION ---
       console.log('[ROLES] Checking for and creating missing roles...');
-      for (const config of ROLE_BUTTON_CONFIG) {
+      // CRITICAL FIX: Filter out the special 'clear_age_role' action before creating roles
+      const rolesToCreate = ROLE_BUTTON_CONFIG.filter(config => config.roleName !== 'clear_age_role');
+
+      for (const config of rolesToCreate) {
         const roleExists = message.guild.roles.cache.some(role => role.name === config.roleName);
         if (!roleExists) {
           await message.guild.roles.create({
@@ -56,9 +54,9 @@ module.exports = {
       // -------------------------------
 
       const embed = new EmbedBuilder()
-        .setColor(0x5865F2) // Discord Blurple
+        .setColor(0x5865F2)
         .setTitle('Select Your Age Range')
-        .setDescription('Click the button that corresponds to your age range to get the appropriate role. This is optional and helps personalize your experience.');
+        .setDescription('Click the button that corresponds to your age range to get the appropriate role. This is optional and helps personalize your experience. You can click "Clear Role" to remove it.');
 
       const components = [];
       let currentRow = new ActionRowBuilder();
@@ -91,7 +89,7 @@ module.exports = {
 
     } catch (error) {
       console.error('Failed to set up button roles:', error);
-      await replyThenDelete(message, 'An error occurred. Please check my permissions (Manage Roles, Send Messages, etc.) and try again.');
+      await replyThenDelete(message, 'An error occurred. Please check my permissions and try again.');
     }
   },
 };
