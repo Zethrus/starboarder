@@ -15,6 +15,7 @@ module.exports = {
       .addFields(
         { name: 'General Commands', value: 'These commands are available to everyone.' },
         { name: '`!award display [@user]`', value: 'Shows the awards earned by you or another user.', inline: true },
+        { name: '`!award top`', value: 'Displays the server-wide awards leaderboard.', inline: true },
         { name: '`!help`', value: 'Displays this help message.', inline: true },
       )
       .addFields(
