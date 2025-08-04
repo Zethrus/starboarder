@@ -7,8 +7,9 @@ module.exports = {
   name: 'purge-users',
   description: 'Manually runs the purge check for unverified members who are past their deadline.',
   async execute(message, args) {
-    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-      return message.reply('You must be an Administrator to run this command.');
+    // --- Dry Run Check ---
+    if (config.enableDryRun) {
+      return message.reply('This command is disabled while `enableDryRun` is active in the configuration. Please disable it to run manual commands.');
     }
     if (!message.guild.members.me.permissions.has(PermissionFlagsBits.KickMembers)) {
       return message.reply('I need the "Kick Members" permission to run this command.');

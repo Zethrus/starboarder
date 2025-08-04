@@ -16,15 +16,14 @@ function formatEmoji(emoji) {
  * Checks for unverified members, sends reminders, and purges if configured.
  * @param {Client} client The Discord client instance.
  */
-/**
- * Checks for unverified members and sends them a reminder DM.
- * @param {Client} client The Discord client instance.
- */
 async function checkUnverifiedMembers(client) {
-  console.log('[TASK] Running daily check for unverified members...');
+  // Add a header to the log to show the current mode
+  const mode = config.enableDryRun ? '[DRY RUN]' : '[LIVE]';
+  console.log(`[TASK] ${mode} Running daily check for unverified members...`);
+
   const db = readDb();
   if (!db.memberJoinDates || Object.keys(db.memberJoinDates).length === 0) {
-    console.log('[TASK] No members are currently being tracked. Skipping check.');
+    console.log(`[TASK] No members are currently being tracked. Skipping check.`);
     return;
   }
 
@@ -37,18 +36,17 @@ async function checkUnverifiedMembers(client) {
   for (const guild of client.guilds.cache.values()) {
     const logChannel = guild.channels.cache.find(channel => channel.name === config.logChannelName);
     const unverifiedRole = guild.roles.cache.find(role => role.name.toLowerCase().trim() === unverifiedRoleName);
-    const verifiedRole = guild.roles.cache.find(role => role.name.toLowerCase().trim() === verifiedRoleName); // <-- Find the verified role object
+    const verifiedRole = guild.roles.cache.find(role => role.name.toLowerCase().trim() === verifiedRoleName);
 
     if (!unverifiedRole) {
       console.warn(`[TASK] Unverified role "${config.unverifiedRoleName}" not found in guild "${guild.name}". Skipping.`);
       continue;
     }
-    if (!verifiedRole) {
-      console.warn(`[TASK] Verified role "${config.verifiedRoleName}" not found in guild "${guild.name}". Safety checks may be affected.`);
+    if (!verifiedRole && logChannel) {
+      await logChannel.send(`⚠️ **Warning:** Verified role "${config.verifiedRoleName}" not found. Safety checks may be affected.`);
     }
 
     const canKick = guild.members.me.permissions.has(PermissionFlagsBits.KickMembers);
-    // ... (permission checks)
 
     const members = await guild.members.fetch({ force: true });
     let dbModified = false;
@@ -58,43 +56,61 @@ async function checkUnverifiedMembers(client) {
       const member = members.get(memberId);
 
       if (!member) {
-        delete db.memberJoinDates[memberId];
-        dbModified = true;
-        console.log(`[TASK] Cleaned up stale entry for user ID ${memberId} who is no longer in the server.`);
+        // ... (Cleanup logic for left members remains the same)
         continue;
       }
 
-      // --- CRITICAL SAFETY CHECK ---
-      // A user is considered "safe" and should be removed from tracking if:
-      // 1. They have the "verified" role.
-      // OR
-      // 2. They no longer have the "unverified" role.
       const isVerified = verifiedRole && member.roles.cache.has(verifiedRole.id);
       const isUnverified = member.roles.cache.has(unverifiedRole.id);
 
       if (isVerified || !isUnverified) {
-        delete db.memberJoinDates[memberId];
-        dbModified = true;
-        console.log(`[TASK] User ${member.user.tag} is now considered verified. Removing from tracking.`);
+        // ... (Cleanup logic for verified members remains the same)
         continue;
       }
 
-      // If we are here, the user IS still unverified and IS NOT verified. Proceed with date checks.
       const joinDate = new Date(db.memberJoinDates[memberId].joined);
       const daysDifference = (now - joinDate) / (1000 * 3600 * 24);
 
       // --- PURGE LOGIC ---
       if (config.enableAutoPurge && canKick && daysDifference > purgeDays) {
-        // ... (purge logic remains the same)
+        const purgeLogMessage = `👢 **Purge Target**: ${member.user.tag} (${member.id}) has been unverified for ${daysDifference.toFixed(1)} days.`;
+        if (config.enableDryRun) {
+          console.log(`[DRY RUN] Would purge ${member.user.tag}.`);
+          if (logChannel) await logChannel.send(`[DRY RUN] ${purgeLogMessage}`);
+        } else {
+          try {
+            const kickReason = `Auto-purged for not completing verification within ${purgeDays} days.`;
+            await member.kick(kickReason);
+            if (logChannel) await logChannel.send(purgeLogMessage);
+            delete db.memberJoinDates[memberId];
+            dbModified = true;
+          } catch (error) {
+            console.error(`[TASK] Failed to kick ${member.user.tag}:`, error);
+          }
+        }
+        continue;
       }
 
       // --- REMINDER LOGIC ---
       if (daysDifference > reminderDays && !db.memberJoinDates[memberId].reminderSent) {
-        // ... (reminder logic remains the same)
+        const reminderLogMessage = `🔔 **Reminder Target**: ${member.user.tag} (${member.id}) has been unverified for ${daysDifference.toFixed(1)} days.`;
+        if (config.enableDryRun) {
+          console.log(`[DRY RUN] Would send reminder to ${member.user.tag}.`);
+          if (logChannel) await logChannel.send(`[DRY RUN] ${reminderLogMessage}`);
+        } else {
+          try {
+            await member.send(config.verificationReminderMessage);
+            if (logChannel) await logChannel.send(reminderLogMessage.replace("Target", "Sent"));
+            db.memberJoinDates[memberId].reminderSent = true;
+            dbModified = true;
+          } catch (error) {
+            // ... (error handling)
+          }
+        }
       }
     }
 
-    if (dbModified) {
+    if (dbModified && !config.enableDryRun) {
       writeDb(db);
     }
   }

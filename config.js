@@ -42,6 +42,7 @@ The Urbex Alberta Team`,
   enableAutoPurge: (process.env.ENABLE_AUTO_PURGE || 'false').toLowerCase() === 'true',
   purgeDelayDays: parseInt(process.env.PURGE_DELAY_DAYS, 10) || 7,
 
-  // --- Logging ---
+  // --- Logging & Safety ---
   logChannelName: process.env.LOG_CHANNEL_NAME || 'log',
+  enableDryRun: (process.env.ENABLE_DRY_RUN || 'true').toLowerCase() === 'true',
 };
