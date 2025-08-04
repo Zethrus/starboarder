@@ -49,7 +49,7 @@ module.exports = {
         flags: [MessageFlags.Ephemeral]
       });
 
-      const logMessage = `👤 **Role Update**: ${interaction.user.tag} self-assigned the **${roleToAdd.name}** role.`; // <-- ADD THIS
+      const logMessage = `👤 **Role Update**: ${interaction.user.tag} self-assigned the **${roleToAdd.name}** role.`; 
       console.log(`[REACTIONS] Assigned role "${roleToAdd.name}" to user ${interaction.user.tag}.`);
       if (logChannel) await logChannel.send(logMessage); // <-- ADD THIS
 

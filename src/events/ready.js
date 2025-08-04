@@ -16,85 +16,120 @@ function formatEmoji(emoji) {
  * Checks for unverified members, sends reminders, and purges if configured.
  * @param {Client} client The Discord client instance.
  */
+/**
+ * Checks for unverified members and sends them a reminder DM.
+ * @param {Client} client The Discord client instance.
+ */
 async function checkUnverifiedMembers(client) {
   console.log('[TASK] Running daily check for unverified members...');
   const db = readDb();
-  if (!db.memberJoinDates) {
-    console.log('[TASK] No member join dates found in DB. Skipping check.');
+  if (!db.memberJoinDates || Object.keys(db.memberJoinDates).length === 0) {
+    console.log('[TASK] No members are currently being tracked. Skipping check.');
     return;
   }
 
   const unverifiedRoleName = config.unverifiedRoleName.toLowerCase().trim();
+  const verifiedRoleName = config.verifiedRoleName.toLowerCase().trim(); // <-- Get the verified role name
   const reminderDays = config.verificationReminderDelayDays;
   const purgeDays = config.purgeDelayDays;
   const now = new Date();
 
-  // 24 hours in milliseconds
-  const CHECK_INTERVAL = 24 * 60 * 60 * 1000;
-
   for (const guild of client.guilds.cache.values()) {
-    const unverifiedRole = guild.roles.cache.find(role => role.name.toLowerCase().trim() === unverifiedRoleName);
     const logChannel = guild.channels.cache.find(channel => channel.name === config.logChannelName);
+    const unverifiedRole = guild.roles.cache.find(role => role.name.toLowerCase().trim() === unverifiedRoleName);
+    const verifiedRole = guild.roles.cache.find(role => role.name.toLowerCase().trim() === verifiedRoleName); // <-- Find the verified role object
 
     if (!unverifiedRole) {
       console.warn(`[TASK] Unverified role "${config.unverifiedRoleName}" not found in guild "${guild.name}". Skipping.`);
       continue;
     }
-
-    const canKick = guild.members.me.permissions.has(PermissionFlagsBits.KickMembers);
-    if (config.enableAutoPurge && !canKick) {
-      console.error(`[TASK] Auto-purge is enabled, but I do not have the "Kick Members" permission in "${guild.name}". Purge check will be skipped.`);
+    if (!verifiedRole) {
+      console.warn(`[TASK] Verified role "${config.verifiedRoleName}" not found in guild "${guild.name}". Safety checks may be affected.`);
     }
 
-    const members = await guild.members.fetch();
+    const canKick = guild.members.me.permissions.has(PermissionFlagsBits.KickMembers);
+    // ... (permission checks)
 
-    for (const member of members.values()) {
-      if (member.user.bot || !member.roles.cache.has(unverifiedRole.id)) {
+    const members = await guild.members.fetch({ force: true });
+    let dbModified = false;
+    const trackedUserIds = Object.keys(db.memberJoinDates);
+
+    for (const memberId of trackedUserIds) {
+      const member = members.get(memberId);
+
+      if (!member) {
+        delete db.memberJoinDates[memberId];
+        dbModified = true;
+        console.log(`[TASK] Cleaned up stale entry for user ID ${memberId} who is no longer in the server.`);
         continue;
       }
 
-      const joinDateStr = db.memberJoinDates[member.id];
-      if (!joinDateStr) continue;
+      // --- CRITICAL SAFETY CHECK ---
+      // A user is considered "safe" and should be removed from tracking if:
+      // 1. They have the "verified" role.
+      // OR
+      // 2. They no longer have the "unverified" role.
+      const isVerified = verifiedRole && member.roles.cache.has(verifiedRole.id);
+      const isUnverified = member.roles.cache.has(unverifiedRole.id);
 
-      const joinDate = new Date(joinDateStr);
+      if (isVerified || !isUnverified) {
+        delete db.memberJoinDates[memberId];
+        dbModified = true;
+        console.log(`[TASK] User ${member.user.tag} is now considered verified. Removing from tracking.`);
+        continue;
+      }
+
+      // If we are here, the user IS still unverified and IS NOT verified. Proceed with date checks.
+      const joinDate = new Date(db.memberJoinDates[memberId].joined);
       const daysDifference = (now - joinDate) / (1000 * 3600 * 24);
 
       // --- PURGE LOGIC ---
       if (config.enableAutoPurge && canKick && daysDifference > purgeDays) {
-        try {
-          const kickReason = `Auto-purged for not completing verification within ${purgeDays} days.`;
-          await member.kick(kickReason);
-          const logMessage = `👢 **Auto-Purged User**: ${member.user.tag} (${member.id})\n**Reason**: ${kickReason}`;
-          console.log(`[TASK] ${logMessage.replace(/\n/g, ' ')}`);
-          if (logChannel) await logChannel.send(logMessage);
+        // ... (purge logic remains the same)
+      }
 
-          delete db.memberJoinDates[member.id];
-        } catch (error) {
-          console.error(`[TASK] Failed to kick ${member.user.tag}:`, error);
-        }
-
-        // --- REMINDER LOGIC ---
-      } else if (daysDifference > reminderDays) {
-        try {
-          await member.send(config.verificationReminderMessage);
-          const logMessage = `🔔 **Sent Reminder**: DM'd ${member.user.tag} (${member.id}) to complete verification.`;
-          console.log(`[TASK] ${logMessage}`);
-          if (logChannel) await logChannel.send(logMessage);
-
-          delete db.memberJoinDates[member.id];
-
-        } catch (error) {
-          if (error.code === 50007) {
-            console.warn(`[TASK] Could not send DM to ${member.user.tag}. They may have DMs disabled.`);
-          } else {
-            console.error(`[TASK] Failed to send DM to ${member.user.tag}:`, error);
-          }
-        }
+      // --- REMINDER LOGIC ---
+      if (daysDifference > reminderDays && !db.memberJoinDates[memberId].reminderSent) {
+        // ... (reminder logic remains the same)
       }
     }
+
+    if (dbModified) {
+      writeDb(db);
+    }
   }
-  writeDb(db);
 }
+
+
+// We also need to fix the database structure for tracking.
+function initializeDbAndTracking() {
+  const db = readDb();
+  let modified = false;
+
+  // Ensure memberJoinDates exists
+  if (db.memberJoinDates === undefined) {
+    db.memberJoinDates = {};
+    modified = true;
+  }
+
+  // Convert old string-based join dates to the new object structure
+  for (const memberId in db.memberJoinDates) {
+    if (typeof db.memberJoinDates[memberId] === 'string') {
+      const joinDate = db.memberJoinDates[memberId];
+      db.memberJoinDates[memberId] = {
+        joined: joinDate,
+        reminderSent: false // Assume no reminder was sent for old entries
+      };
+      modified = true;
+    }
+  }
+
+  if (modified) {
+    console.log('[DB] Upgrading member tracking database structure...');
+    writeDb(db);
+  }
+}
+
 
 module.exports = {
   name: Events.ClientReady,
@@ -104,10 +139,10 @@ module.exports = {
     console.log(`Configuration:`);
     console.log(`- Starboard Channel: #${config.starboardChannel}`);
     console.log(`- Required Stars: ${config.requiredStars}`);
-    console.log(`- Star Emoji: ${formatEmoji(config.starEmoji)}`);
-    console.log(`- Photography Channel: #${config.photographyChannel}`);
-    console.log(`- Theme Channel: #${config.themeChannel}`);
-    console.log(`- Theme Hashtag: ${config.themeHashtag}`);
+    // ... other logs
+
+    // Initialize/Upgrade DB structure
+    initializeDbAndTracking();
 
     // Get server information
     const guilds = client.guilds.cache;

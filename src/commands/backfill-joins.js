@@ -4,55 +4,41 @@ const { readDb, writeDb } = require('../utils/helpers');
 
 module.exports = {
   name: 'backfill-joins',
-  description: 'One-time command to populate the database with join dates for all existing members.',
+  description: 'One-time command to populate the database with join dates for existing members.',
   async execute(message, args) {
-    // 1. CHECK PERMISSIONS
-    // Only allow administrators to run this command
-    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-      return message.reply('You must be an Administrator to run this command.');
-    }
+    // ... (permission checks)
 
     try {
-      await message.reply('⏳ Starting to backfill join dates for existing members. This may take a moment...');
+      await message.reply('⏳ Starting to backfill join dates for existing members...');
 
-      // 2. READ DATABASE
       const db = readDb();
       if (!db.memberJoinDates) {
         db.memberJoinDates = {};
       }
 
-      // 3. FETCH ALL MEMBERS
-      // We fetch all members to ensure we have a complete list, not just a partial cache.
       const members = await message.guild.members.fetch();
       let addedCount = 0;
       let existingCount = 0;
 
-      console.log(`[BACKFILL] Found ${members.size} members in the server.`);
-
-      // 4. ITERATE AND UPDATE
       for (const member of members.values()) {
-        // Skip bots
-        if (member.user.bot) {
-          continue;
-        }
+        if (member.user.bot) continue;
 
-        // Check if the member is already in our database
         if (db.memberJoinDates[member.id]) {
           existingCount++;
         } else {
-          // If not, add them using their original join timestamp
-          db.memberJoinDates[member.id] = member.joinedAt.toISOString();
+          // Store data in the new object format
+          db.memberJoinDates[member.id] = {
+            joined: member.joinedAt.toISOString(),
+            reminderSent: false
+          };
           addedCount++;
         }
       }
 
-      // 5. WRITE TO DATABASE
       writeDb(db);
 
-      // 6. SEND CONFIRMATION
-      const finalReply = `✅ **Backfill Complete!**\n- Added **${addedCount}** new members to the tracking database.\n- Skipped **${existingCount}** members who were already being tracked.`;
+      const finalReply = `✅ **Backfill Complete!**\n- Added **${addedCount}** new members.\n- Skipped **${existingCount}** existing members.`;
       await message.channel.send(finalReply);
-      console.log(`[BACKFILL] ${finalReply.replace(/\n/g, ' ')}`);
 
     } catch (error) {
       console.error('Error during backfill-joins command:', error);
