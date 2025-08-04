@@ -46,6 +46,7 @@ module.exports = {
       let purgedCount = 0;
       let skippedCount = 0;
       let candidatesFound = 0;
+      const purgeList = []; // Array to hold the names of users to be purged
 
       for (const member of members.values()) {
         if (member.user.bot) continue;
@@ -65,17 +66,13 @@ module.exports = {
         const daysDifference = (now - joinDate) / (1000 * 3600 * 24);
 
         if (daysDifference > totalPurgeThreshold) {
+          purgeList.push(`- ${member.user.tag} (${daysDifference.toFixed(1)} days)`);
           const kickReason = `Manually purged for not completing verification within the deadline.`;
-          const logMessage = `👢 **${mode} Purge**: ${member.user.tag} would be purged (unverified for ${daysDifference.toFixed(1)} days).`;
 
-          if (config.enableDryRun) {
-            purgedCount++;
-            if (logChannel) await logChannel.send(logMessage);
-          } else {
+          if (!config.enableDryRun) {
             try {
               await member.kick(kickReason);
               purgedCount++;
-              if (logChannel) await logChannel.send(logMessage);
               delete db.memberJoinDates[member.id];
             } catch (error) {
               console.error(`[PURGE-CMD] Failed to kick ${member.user.tag}:`, error);
@@ -89,12 +86,34 @@ module.exports = {
         writeDb(db);
       }
 
-      const finalReport = `✅ **${mode} Manual Purge Check Complete!**\n` +
+      // --- ENHANCED FINAL REPORT ---
+      let finalReport = `✅ **${mode} Manual Purge Check Complete!**\n` +
         `- Checked **${candidatesFound}** member(s) with the "${unverifiedRole.name}" role.\n` +
-        `- Identified **${purgedCount}** member(s) past the **${totalPurgeThreshold}-day** purge threshold.\n` +
-        `- Failed to kick **${skippedCount}** member(s) (see console for errors).`;
+        `- Identified **${purgeList.length}** member(s) past the **${totalPurgeThreshold}-day** purge threshold.`;
+
+      // Add the list of identified users to the report
+      if (purgeList.length > 0) {
+        finalReport += `\n\n**Identified Users:**\n${purgeList.slice(0, 15).join('\n')}`; // Show up to 15 users
+        if (purgeList.length > 15) {
+          finalReport += `\n...and ${purgeList.length - 15} more.`;
+        }
+      }
+
+      // Add the live-mode action summary
+      if (!config.enableDryRun) {
+        finalReport += `\n\n- Successfully kicked **${purgedCount}** member(s).`;
+      }
+
+      if (skippedCount > 0) {
+        finalReport += `\n- Failed to kick **${skippedCount}** member(s) (see console for errors).`;
+      }
 
       await initialReply.edit(finalReport);
+
+      // Also log the full list to the log channel if it exists
+      if (logChannel && purgeList.length > 0) {
+        await logChannel.send(`**${mode} Purge Report:**\nIdentified ${purgeList.length} user(s) for purging:\n\`\`\`${purgeList.join('\n')}\`\`\``);
+      }
 
     } catch (error) {
       console.error('Error during purge-users command:', error);
