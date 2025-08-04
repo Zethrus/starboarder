@@ -7,15 +7,15 @@ const { readDb, writeDb, replyThenDelete } = require('../utils/helpers');
 async function handleCreateAward(interaction) {
   const awardName = interaction.options.getString('name');
   const role = interaction.options.getRole('role');
-  const imageUrl = interaction.options.getString('image') || null;
+  const emoji = interaction.options.getString('emoji') || null;
   const db = await readDb();
   if (db.awards[awardName]) {
     const existingRole = interaction.guild.roles.cache.get(db.awards[awardName].roleId);
     return interaction.reply({ content: `An award named "${awardName}" already exists and is linked to the \`${existingRole?.name || 'Unknown Role'}\` role.`, ephemeral: true });
   }
-  db.awards[awardName] = { roleId: role.id, imageUrl: imageUrl };
+  db.awards[awardName] = { roleId: role.id, emoji: emoji };
   await writeDb(db);
-  await interaction.reply({ content: `✅ Successfully created the **${awardName}** award, linked to the \`${role.name}\` role${imageUrl ? ' with image' : ''}.` });
+  await interaction.reply({ content: `✅ Successfully created the **${awardName}** award, linked to the \`${role.name}\` role${emoji ? ` with emoji ${emoji}` : ''}.` });
 }
 /**
 * Handles the "/award delete" subcommand.
@@ -109,8 +109,8 @@ async function handleDisplayAwards(interaction) {
       return a[0].localeCompare(b[0]);
     });
     const awardsString = sortedAwards.map(([awardName, count]) => {
-      const awardImage = db.awards[awardName]?.imageUrl ? ` [Image](${db.awards[awardName].imageUrl})` : '';
-      return `🏆 **${awardName.charAt(0).toUpperCase() + awardName.slice(1)}** (x${count})${awardImage}`;
+      const awardEmoji = db.awards[awardName]?.emoji ? ` ${db.awards[awardName].emoji}` : '';
+      return `🏆 **${awardName.charAt(0).toUpperCase() + awardName.slice(1)}** (x${count})${awardEmoji}`;
     }).join('\n');
     embed.addFields({ name: 'Collected Awards', value: awardsString });
   }
@@ -166,7 +166,7 @@ async function handleListAwards(interaction) {
       const role = interaction.guild.roles.cache.get(data.roleId);
       const roleName = role ? `@${role.name}` : '`Role Not Found`';
       const capitalizedAwardName = awardName.charAt(0).toUpperCase() + awardName.slice(1);
-      embed.addFields({ name: `**${capitalizedAwardName}**`, value: `Linked to role: ${roleName}${data.imageUrl ? `\nImage: [View](${data.imageUrl})` : ''}`, inline: false });
+      embed.addFields({ name: `**${capitalizedAwardName}**`, value: `Linked to role: ${roleName}${data.emoji ? `\nEmoji: ${data.emoji}` : ''}`, inline: false });
     }
   }
   await interaction.reply({ embeds: [embed] });
@@ -184,7 +184,7 @@ module.exports = {
         .setDescription('Creates a new award linked to a role.')
         .addStringOption(option => option.setName('name').setDescription('The name of the new award.').setRequired(true))
         .addRoleOption(option => option.setName('role').setDescription('The role to link to this award.').setRequired(true))
-        .addStringOption(option => option.setName('image').setDescription('URL of the award image (optional).').setRequired(false))
+        .addStringOption(option => option.setName('emoji').setDescription('Emoji or custom emoji code (e.g., :golden_camera:) for the award (optional).').setRequired(false))
     )
     .addSubcommand(subcommand =>
       subcommand
