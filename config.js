@@ -25,4 +25,5 @@ module.exports = {
   photographyChannel: process.env.PHOTOGRAPHY_CHANNEL || 'photography',
   themeChannel: process.env.THEME_CHANNEL || 'theme-of-the-month-submissions',
   themeHashtag: process.env.THEME_HASHTAG ? process.env.THEME_HASHTAG.trim() : '#theme-of-the-month',
+  reactionRoleChannel: process.env.REACTION_ROLE_CHANNEL || 'information',
 };
