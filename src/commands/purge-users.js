@@ -7,23 +7,27 @@ module.exports = {
   name: 'purge-users',
   description: 'Manually runs the purge check for unverified members who are past their deadline.',
   async execute(message, args) {
+    const mode = config.enableDryRun ? '[DRY RUN]' : '[LIVE]';
+    if (config.enableDryRun) {
+      await message.reply(`Running manual purge check in **[DRY RUN]** mode. No actions will be taken.`);
+    }
+
     if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
       return message.reply('You must be an Administrator to run this command.');
     }
-
-    // In live mode, the bot must have kick permissions. This check is skipped in dry run.
-    if (!config.enableDryRun && !message.guild.members.me.permissions.has(PermissionFlagsBits.KickMembers)) {
-      return message.reply('I need the "Kick Members" permission to run this command in live mode.');
+    if (!message.guild.members.me.permissions.has(PermissionFlagsBits.KickMembers)) {
+      return message.reply('I need the "Kick Members" permission to run this command.');
     }
 
     try {
-      const mode = config.enableDryRun ? '[DRY RUN]' : '[LIVE]';
-      await message.reply(`⏳ Starting manual purge of unverified members in **${mode}** mode. This may take a moment...`);
+      const initialReply = await message.channel.send(`⏳ ${mode} Starting manual purge check...`);
 
       const db = readDb();
       const unverifiedRoleName = config.unverifiedRoleName.toLowerCase().trim();
       const verifiedRoleName = config.verifiedRoleName.toLowerCase().trim();
       const purgeDays = config.purgeDelayDays;
+      const graceDays = config.purgeGracePeriodDays;
+      const totalPurgeThreshold = purgeDays + graceDays;
       const now = new Date();
 
       const guild = message.guild;
@@ -32,16 +36,16 @@ module.exports = {
       const logChannel = guild.channels.cache.find(channel => channel.name === config.logChannelName);
 
       if (!unverifiedRole) {
-        return message.channel.send(`Error: The role named "${config.unverifiedRoleName}" was not found.`);
+        return initialReply.edit(`Error: The role named "${config.unverifiedRoleName}" was not found.`);
       }
       if (!verifiedRole) {
         await message.channel.send(`⚠️ **Warning:** The verified role "${config.verifiedRoleName}" was not found. The command will run without this safety check.`);
       }
 
       const members = await guild.members.fetch();
-      let actionCount = 0;
+      let purgedCount = 0;
       let skippedCount = 0;
-      let dbModified = false;
+      let candidatesFound = 0;
 
       for (const member of members.values()) {
         if (member.user.bot) continue;
@@ -49,29 +53,30 @@ module.exports = {
         const isVerified = verifiedRole && member.roles.cache.has(verifiedRole.id);
         const isUnverified = member.roles.cache.has(unverifiedRole.id);
 
-        if (isVerified || !isUnverified) continue;
+        if (isVerified || !isUnverified) {
+          continue;
+        }
 
+        candidatesFound++;
         const joinDateStr = db.memberJoinDates[member.id]?.joined;
         if (!joinDateStr) continue;
 
         const joinDate = new Date(joinDateStr);
         const daysDifference = (now - joinDate) / (1000 * 3600 * 24);
 
-        if (daysDifference > purgeDays) {
-          const logMessage = `👢 **Purge Target**: ${member.user.tag} (${member.id}) has been unverified for ${daysDifference.toFixed(1)} days.`;
+        if (daysDifference > totalPurgeThreshold) {
+          const kickReason = `Manually purged for not completing verification within the deadline.`;
+          const logMessage = `👢 **${mode} Purge**: ${member.user.tag} would be purged (unverified for ${daysDifference.toFixed(1)} days).`;
 
           if (config.enableDryRun) {
-            actionCount++;
-            console.log(`[DRY RUN] [PURGE-CMD] Would purge ${member.user.tag}.`);
-            if (logChannel) await logChannel.send(`[DRY RUN] ${logMessage}`);
+            purgedCount++;
+            if (logChannel) await logChannel.send(logMessage);
           } else {
             try {
-              const kickReason = `Manually purged for not completing verification within ${purgeDays} days.`;
               await member.kick(kickReason);
-              actionCount++;
-              if (logChannel) await logChannel.send(logMessage.replace('Target', 'User'));
+              purgedCount++;
+              if (logChannel) await logChannel.send(logMessage);
               delete db.memberJoinDates[member.id];
-              dbModified = true;
             } catch (error) {
               console.error(`[PURGE-CMD] Failed to kick ${member.user.tag}:`, error);
               skippedCount++;
@@ -80,12 +85,16 @@ module.exports = {
         }
       }
 
-      if (dbModified && !config.enableDryRun) {
+      if (!config.enableDryRun) {
         writeDb(db);
       }
 
-      const finalVerb = config.enableDryRun ? 'identified' : 'kicked';
-      await message.channel.send(`✅ **Manual Purge Complete!**\n- **${actionCount}** member(s) ${finalVerb}.\n- Failed to kick **${skippedCount}** member(s) (see console for errors).`);
+      const finalReport = `✅ **${mode} Manual Purge Check Complete!**\n` +
+        `- Checked **${candidatesFound}** member(s) with the "${unverifiedRole.name}" role.\n` +
+        `- Identified **${purgedCount}** member(s) past the **${totalPurgeThreshold}-day** purge threshold.\n` +
+        `- Failed to kick **${skippedCount}** member(s) (see console for errors).`;
+
+      await initialReply.edit(finalReport);
 
     } catch (error) {
       console.error('Error during purge-users command:', error);
