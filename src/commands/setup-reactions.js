@@ -1,10 +1,8 @@
 // src/commands/setup-reactions.js
-const { PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { readDb, writeDb, replyThenDelete } = require('../utils/helpers');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { readDb, writeDb } = require('../utils/helpers');
 const config = require('../../config');
 
-// --- CONFIGURATION FOR ROLE BUTTONS ---
-// CORRECTED: Replaced invalid emoji characters with standard Unicode emojis.
 const ROLE_BUTTON_CONFIG = [
   { emoji: '1️⃣', label: '16-17', roleName: '16-17', style: ButtonStyle.Secondary },
   { emoji: '2️⃣', label: '18-20', roleName: '18-20', style: ButtonStyle.Secondary },
@@ -15,53 +13,42 @@ const ROLE_BUTTON_CONFIG = [
   { emoji: '7️⃣', label: '40+', roleName: '40+', style: ButtonStyle.Secondary },
   { emoji: '🗑️', label: 'Clear Role', roleName: 'clear_age_role', style: ButtonStyle.Danger },
 ];
-// -----------------------------------------
 
 module.exports = {
-  name: 'setup-reactions',
-  description: 'Sets up the reaction role message in the specified channel.',
-  async execute(message, args) {
-    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-      return replyThenDelete(message, 'You must be an Administrator to run this command.');
-    }
-    if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
-      return replyThenDelete(message, 'I need the "Manage Roles" permission to automatically create roles.');
+  data: new SlashCommandBuilder()
+    .setName('setup-reactions')
+    .setDescription('Sets up the reaction role message in the information channel.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  async execute(interaction) {
+    if (!interaction.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      return interaction.reply({ content: 'I need the "Manage Roles" permission to automatically create and assign roles.', ephemeral: true });
     }
 
-    const targetChannel = message.guild.channels.cache.find(
-      channel => channel.name === config.reactionRoleChannel
-    );
+    const targetChannel = interaction.guild.channels.cache.find(channel => channel.name === config.reactionRoleChannel);
     if (!targetChannel) {
-      return replyThenDelete(message, `The channel #${config.reactionRoleChannel} was not found.`);
+      return interaction.reply({ content: `The channel #${config.reactionRoleChannel} was not found.`, ephemeral: true });
     }
+
+    await interaction.reply({ content: '⚙️ Setting up reaction roles...', ephemeral: true });
 
     try {
-      // --- AUTOMATIC ROLE CREATION ---
-      console.log('[ROLES] Checking for and creating missing roles...');
-      const rolesToCreate = ROLE_BUTTON_CONFIG.filter(config => config.roleName !== 'clear_age_role');
-
-      for (const config of rolesToCreate) {
-        const roleExists = message.guild.roles.cache.some(role => role.name === config.roleName);
+      for (const config of ROLE_BUTTON_CONFIG) {
+        if (config.roleName === 'clear_age_role') continue;
+        const roleExists = interaction.guild.roles.cache.some(role => role.name === config.roleName);
         if (!roleExists) {
-          await message.guild.roles.create({
-            name: config.roleName,
-            reason: 'Auto-created for reaction roles by bot.',
-          });
-          console.log(`[ROLES] Created role: ${config.roleName}`);
+          await interaction.guild.roles.create({ name: config.roleName, reason: 'Auto-created for reaction roles.' });
         }
       }
-      console.log('[ROLES] Role check complete.');
-      // -------------------------------
 
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
         .setTitle('Select Your Age Range')
-        .setDescription('Click the button that corresponds to your age range to get the appropriate role. This is optional and helps personalize your experience. You can click "Clear Role" to remove it.');
+        .setDescription('Click a button to assign yourself an age-range role. This is optional and can be cleared at any time.');
 
       const components = [];
       let currentRow = new ActionRowBuilder();
-
-      for (const buttonConfig of ROLE_BUTTON_CONFIG) {
+      ROLE_BUTTON_CONFIG.forEach(buttonConfig => {
         if (currentRow.components.length === 5) {
           components.push(currentRow);
           currentRow = new ActionRowBuilder();
@@ -73,25 +60,22 @@ module.exports = {
             .setEmoji(buttonConfig.emoji)
             .setStyle(buttonConfig.style)
         );
-      }
-      if (currentRow.components.length > 0) {
-        components.push(currentRow);
-      }
+      });
+      if (currentRow.components.length > 0) components.push(currentRow);
 
-      const reactionMessage = await targetChannel.send({ embeds: [embed], components: components });
+      const reactionMessage = await targetChannel.send({ embeds: [embed], components });
 
       const db = await readDb();
       db.reactionRoleMessageId = reactionMessage.id;
       await writeDb(db);
 
-      await message.delete();
-      console.log(`[REACTIONS] Successfully set up button role message with ID: ${reactionMessage.id}`);
+      await interaction.editReply({ content: `✅ Successfully set up the button role message in ${targetChannel}.` });
 
     } catch (error) {
       console.error('Failed to set up button roles:', error);
-      await replyThenDelete(message, 'An error occurred. Please check my permissions and try again.');
+      await interaction.editReply({ content: 'An error occurred. Please check my permissions and the console.' });
     }
   },
+  // Exporting this for the interactionCreate event
+  ROLE_BUTTON_CONFIG,
 };
-
-module.exports.ROLE_BUTTON_CONFIG = ROLE_BUTTON_CONFIG;
