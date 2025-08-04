@@ -1,41 +1,51 @@
 // src/events/interactionCreate.js
 const { Events, MessageFlags } = require('discord.js');
 const { ROLE_BUTTON_CONFIG } = require('../commands/setup-reactions.js');
-const config = require('../../config'); // <-- ADD THIS
+const config = require('../../config');
 
-// Create a Set of all possible age role names for quick lookups
-const allAgeRoleNames = new Set(ROLE_BUTTON_CONFIG.map(config => config.roleName));
+// Create a Set of all actual age role names for quick lookups, excluding the special 'clear' action
+const allAgeRoleNames = new Set(
+  ROLE_BUTTON_CONFIG.filter(config => config.roleName !== 'clear_age_role')
+    .map(config => config.roleName)
+);
 
 module.exports = {
   name: Events.InteractionCreate,
   async execute(interaction) {
-    // We only care about button clicks
-    if (!interaction.isButton()) return;
+    if (!interaction.isButton() || !interaction.customId.startsWith('reaction_role:')) return;
 
-    // We only care about buttons with our specific custom ID prefix
-    if (!interaction.customId.startsWith('reaction_role:')) return;
+    const action = interaction.customId.split(':')[1];
+    const member = interaction.member;
+    const logChannel = interaction.guild.channels.cache.find(channel => channel.name === config.logChannelName);
 
-    // Get the role name from the button's custom ID (e.g., 'reaction_role:16-17' -> '16-17')
-    const roleNameToAdd = interaction.customId.split(':')[1];
-
-    // --- ROLE MANAGEMENT LOGIC ---
     try {
-      const member = interaction.member;
-      const guildRoles = interaction.guild.roles.cache;
-      const logChannel = interaction.guild.channels.cache.find(channel => channel.name === config.logChannelName); // <-- ADD THIS
+      // Find all existing age roles on the user
+      const userRolesToRemove = member.roles.cache.filter(role => allAgeRoleNames.has(role.name));
 
-      // Find the role object the user wants to add
-      const roleToAdd = guildRoles.find(r => r.name === roleNameToAdd);
+      // --- LOGIC FOR CLEARING ROLE ---
+      if (action === 'clear_age_role') {
+        if (userRolesToRemove.size > 0) {
+          await member.roles.remove(userRolesToRemove);
+          await interaction.reply({ content: 'Your age role has been successfully removed.', flags: [MessageFlags.Ephemeral] });
+          const logMessage = `👤 **Role Update**: ${interaction.user.tag} cleared their age role.`;
+          if (logChannel) await logChannel.send(logMessage);
+        } else {
+          await interaction.reply({ content: 'You do not currently have an age role to remove.', flags: [MessageFlags.Ephemeral] });
+        }
+        return; // End execution after clearing
+      }
+
+      // --- LOGIC FOR ADDING A ROLE ---
+      const roleNameToAdd = action;
+      const roleToAdd = interaction.guild.roles.cache.find(r => r.name === roleNameToAdd);
+
       if (!roleToAdd) {
         console.error(`[REACTIONS] Role "${roleNameToAdd}" not found on the server.`);
         await interaction.reply({ content: 'An error occurred: The role for this button could not be found.', flags: [MessageFlags.Ephemeral] });
         return;
       }
 
-      // Get a list of all age roles the user *currently* has
-      const userRolesToRemove = member.roles.cache.filter(role => allAgeRoleNames.has(role.name));
-
-      // Remove all existing age roles from the user
+      // Remove any existing age roles before adding the new one
       if (userRolesToRemove.size > 0) {
         await member.roles.remove(userRolesToRemove);
       }
@@ -43,15 +53,14 @@ module.exports = {
       // Add the new role
       await member.roles.add(roleToAdd);
 
-      // Send a private confirmation message
+      // Send confirmation and log
       await interaction.reply({
         content: `You have been given the **${roleToAdd.name}** role!`,
         flags: [MessageFlags.Ephemeral]
       });
-
-      const logMessage = `👤 **Role Update**: ${interaction.user.tag} self-assigned the **${roleToAdd.name}** role.`; 
+      const logMessage = `👤 **Role Update**: ${interaction.user.tag} self-assigned the **${roleToAdd.name}** role.`;
       console.log(`[REACTIONS] Assigned role "${roleToAdd.name}" to user ${interaction.user.tag}.`);
-      if (logChannel) await logChannel.send(logMessage); // <-- ADD THIS
+      if (logChannel) await logChannel.send(logMessage);
 
     } catch (error) {
       console.error('Error handling reaction role update:', error);

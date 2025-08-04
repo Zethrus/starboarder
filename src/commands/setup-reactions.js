@@ -13,6 +13,7 @@ const ROLE_BUTTON_CONFIG = [
   { emoji: '⚪', label: '30-34', roleName: '30-34', style: ButtonStyle.Secondary },
   { emoji: '🔴', label: '35-39', roleName: '35-39', style: ButtonStyle.Secondary },
   { emoji: '🟤', label: '40+', roleName: '40+', style: ButtonStyle.Secondary },
+  { emoji: '🗑️', label: 'Clear Role', roleName: 'clear_age_role', style: ButtonStyle.Danger },
 ];
 // -----------------------------------------
 
