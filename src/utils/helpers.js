@@ -9,7 +9,8 @@ const defaultDbStructure = {
   awards: {},
   userAwards: {},
   reactionRoleMessageId: null,
-  memberJoinDates: {}, // <-- ADD THIS LINE
+  memberJoinDates: {},
+  starredMessageIds: {}, // <-- ADD THIS LINE
 };
 
 /**
@@ -24,6 +25,9 @@ function initializeDb() {
     if (!db.memberJoinDates) {
       db.memberJoinDates = {};
     }
+    if (!db.starredMessageIds) { // <-- ADD THIS BLOCK
+      db.starredMessageIds = {};
+    }
     writeDb(db);
   } else {
     // Also handle case where db.json exists but is from an older version
@@ -31,6 +35,11 @@ function initializeDb() {
     if (db.memberJoinDates === undefined) {
       console.log('[DB] Adding new `memberJoinDates` property to existing database.');
       db.memberJoinDates = {};
+      writeDb(db);
+    }
+    if (db.starredMessageIds === undefined) { // <-- ADD THIS BLOCK
+      console.log('[DB] Adding new `starredMessageIds` property to existing database.');
+      db.starredMessageIds = {};
       writeDb(db);
     }
   }

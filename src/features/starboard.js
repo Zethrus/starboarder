@@ -1,10 +1,10 @@
 // src/features/starboard.js
 const { EmbedBuilder } = require('discord.js');
 const config = require('../../config');
-const { getImageFromMessage, formatEmoji } = require('../utils/helpers');
+const { getImageFromMessage, formatEmoji, readDb, writeDb } = require('../utils/helpers'); // <-- ADD readDb and writeDb
 
 // Store starred message IDs to prevent duplicates during this session
-const starredMessages = new Set();
+// const starredMessages = new Set(); // <-- REMOVE THIS
 
 async function handleStarboard(reaction, user) {
   // Check if reaction matches our configured emoji
@@ -26,8 +26,13 @@ async function handleStarboard(reaction, user) {
   }
   const message = reaction.message;
 
-  // Skip if already starred in this session
-  if (starredMessages.has(message.id)) return;
+  // --- DATABASE CHECK ---
+  const db = readDb();
+  if (db.starredMessageIds[message.id]) {
+    return; // Already starred, so we stop here.
+  }
+  // ----------------------
+
 
   // Get star count
   const starCount = reaction.count;
@@ -43,7 +48,7 @@ async function handleStarboard(reaction, user) {
   const starboardChannel = message.guild.channels.cache.find(
     channel => channel.name === config.starboardChannel && channel.isTextBased()
   );
-  const logChannel = message.guild.channels.cache.find(channel => channel.name === config.logChannelName); // <-- ADD THIS
+  const logChannel = message.guild.channels.cache.find(channel => channel.name === config.logChannelName);
 
   if (!starboardChannel) {
     console.error(`Starboard channel #${config.starboardChannel} not found in server: ${message.guild.name}`);
@@ -71,10 +76,15 @@ async function handleStarboard(reaction, user) {
   // Post to starboard
   try {
     await starboardChannel.send({ embeds: [embed] });
-    starredMessages.add(message.id);
+
+    // --- DATABASE UPDATE ---
+    db.starredMessageIds[message.id] = true; // Mark as starred
+    writeDb(db); // Save to database
+    // -----------------------
+
     const logMessage = `⭐ **New Starboard Post**: Message by ${message.author.tag} in ${message.channel} reached the threshold with ${starCount} stars.`;
     console.log(`Message ${message.id} posted to starboard in server: ${message.guild.name}`);
-    if (logChannel) await logChannel.send(logMessage); // <-- ADD THIS
+    if (logChannel) await logChannel.send(logMessage);
   } catch (error) {
     console.error(`Error posting to starboard in server ${message.guild.name}:`, error);
   }
