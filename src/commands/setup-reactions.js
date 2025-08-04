@@ -4,14 +4,15 @@ const { readDb, writeDb, replyThenDelete } = require('../utils/helpers');
 const config = require('../../config');
 
 // --- CONFIGURATION FOR ROLE BUTTONS ---
+// CORRECTED: Replaced invalid emoji characters with standard Unicode emojis.
 const ROLE_BUTTON_CONFIG = [
-  { emoji: '鳩', label: '16-17', roleName: '16-17', style: ButtonStyle.Secondary },
-  { emoji: '泙', label: '18-20', roleName: '18-20', style: ButtonStyle.Secondary },
-  { emoji: '泪', label: '21-24', roleName: '21-24', style: ButtonStyle.Secondary },
-  { emoji: '泛', label: '25-29', roleName: '25-29', style: ButtonStyle.Secondary },
-  { emoji: '笞ｪ', label: '30-34', roleName: '30-34', style: ButtonStyle.Secondary },
-  { emoji: '閥', label: '35-39', roleName: '35-39', style: ButtonStyle.Secondary },
-  { emoji: '洟', label: '40+', roleName: '40+', style: ButtonStyle.Secondary },
+  { emoji: '1️⃣', label: '16-17', roleName: '16-17', style: ButtonStyle.Secondary },
+  { emoji: '2️⃣', label: '18-20', roleName: '18-20', style: ButtonStyle.Secondary },
+  { emoji: '3️⃣', label: '21-24', roleName: '21-24', style: ButtonStyle.Secondary },
+  { emoji: '4️⃣', label: '25-29', roleName: '25-29', style: ButtonStyle.Secondary },
+  { emoji: '5️⃣', label: '30-34', roleName: '30-34', style: ButtonStyle.Secondary },
+  { emoji: '6️⃣', label: '35-39', roleName: '35-39', style: ButtonStyle.Secondary },
+  { emoji: '7️⃣', label: '40+', roleName: '40+', style: ButtonStyle.Secondary },
   { emoji: '🗑️', label: 'Clear Role', roleName: 'clear_age_role', style: ButtonStyle.Danger },
 ];
 // -----------------------------------------
@@ -37,7 +38,6 @@ module.exports = {
     try {
       // --- AUTOMATIC ROLE CREATION ---
       console.log('[ROLES] Checking for and creating missing roles...');
-      // CRITICAL FIX: Filter out the special 'clear_age_role' action before creating roles
       const rolesToCreate = ROLE_BUTTON_CONFIG.filter(config => config.roleName !== 'clear_age_role');
 
       for (const config of rolesToCreate) {
