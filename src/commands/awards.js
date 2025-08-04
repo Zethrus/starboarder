@@ -2,7 +2,7 @@
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { readDb, writeDb, replyThenDelete } = require('../utils/helpers');
 
-module.hexports = {
+module.exports = {
   name: 'award',
   description: 'Manages the award system.',
   async execute(message, args) {
