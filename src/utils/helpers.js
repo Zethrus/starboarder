@@ -1,6 +1,7 @@
 // src/utils/helpers.js
 const fs = require('node:fs');
 const path = require('node:path');
+const config = require('../../config'); // <-- ADD THIS LINE
 
 // --- DATABASE HELPERS ---
 const dbPath = path.join(__dirname, '..', '..', 'db.json');
@@ -94,7 +95,7 @@ function formatEmoji(emoji) {
  * @param {string} content The content of the reply.
  * @param {number} [delay=5000] The time in milliseconds to wait before deleting the reply.
  */
-async function replyThenDelete(message, content, delay = 5000) {
+async function replyThenDelete(message, content, delay = config.replyDeleteDelay) { // <-- MODIFY THIS LINE
   try {
     const reply = await message.reply(content);
     setTimeout(() => {

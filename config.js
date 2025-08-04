@@ -26,4 +26,5 @@ module.exports = {
   themeChannel: process.env.THEME_CHANNEL || 'theme-of-the-month-submissions',
   themeHashtag: process.env.THEME_HASHTAG ? process.env.THEME_HASHTAG.trim() : '#theme-of-the-month',
   reactionRoleChannel: process.env.REACTION_ROLE_CHANNEL || 'information',
+  replyDeleteDelay: parseInt(process.env.REPLY_DELETE_DELAY, 10) || 5000,
 };
