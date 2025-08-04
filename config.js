@@ -41,6 +41,7 @@ The Urbex Alberta Team`,
   // --- Settings for Auto-Purge ---
   enableAutoPurge: (process.env.ENABLE_AUTO_PURGE || 'false').toLowerCase() === 'false',
   purgeDelayDays: parseInt(process.env.PURGE_DELAY_DAYS, 10) || 7,
+  purgeGracePeriodDays: parseInt(process.env.PURGE_GRACE_PERIOD_DAYS, 10) || 1,
 
   // --- Logging & Safety ---
   logChannelName: process.env.LOG_CHANNEL_NAME || 'logs',
