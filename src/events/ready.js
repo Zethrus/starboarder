@@ -29,7 +29,7 @@ async function checkUnverifiedMembers(client) {
   }
 
   const unverifiedRoleName = config.unverifiedRoleName.toLowerCase().trim();
-  const verifiedRoleName = config.verifiedRoleName.toLowerCase().trim(); // <-- Get the verified role name
+  const verifiedRoleName = config.verifiedRoleName.toLowerCase().trim();
   const reminderDays = config.verificationReminderDelayDays;
   const purgeDays = config.purgeDelayDays;
   const now = new Date();

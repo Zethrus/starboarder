@@ -29,7 +29,8 @@ module.exports = {
   replyDeleteDelay: parseInt(process.env.REPLY_DELETE_DELAY, 10) || 5000,
 
   // --- Settings for Unverified Member Reminder ---
-  unverifiedRoleName: process.env.UNVERIFIED_ROLE_NAME || 'unverified member',
+  verifiedRoleName: process.env.VERIFIED_ROLE_NAME || 'Verified Member',
+  unverifiedRoleName: process.env.UNVERIFIED_ROLE_NAME || 'Unverified Member',
   verificationReminderDelayDays: parseInt(process.env.VERIFICATION_REMINDER_DELAY_DAYS, 10) || 3,
   verificationReminderMessage: `Hi there, we noticed that you have not yet successfully gone through the process for "Verified Member" for full access in the Urbex Alberta Discord server. 
 We would strongly recommend that you thoroughly read the post in #how-2-member to proceed further, as unverified accounts are routinely purged within` + process.env.PURGE_DELAY_DAYS + ` days.
