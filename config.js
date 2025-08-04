@@ -32,7 +32,7 @@ module.exports = {
   unverifiedRoleName: process.env.UNVERIFIED_ROLE_NAME || 'unverified member',
   verificationReminderDelayDays: parseInt(process.env.VERIFICATION_REMINDER_DELAY_DAYS, 10) || 3,
   verificationReminderMessage: `Hi there, we noticed that you have not yet successfully gone through the process for "Verified Member" for full access in the Urbex Alberta Discord server. 
-We would strongly recommend that you thoroughly read the post in #how-2-member to proceed further, as unverified accounts are routinely purged.
+We would strongly recommend that you thoroughly read the post in #how-2-member to proceed further, as unverified accounts are routinely purged within` + process.env.PURGE_DELAY_DAYS + ` days.
 
 We look forward to seeing your explorations and adventures~
 The Urbex Alberta Team`,
