@@ -1,5 +1,5 @@
 // src/events/interactionCreate.js
-const { Events } = require('discord.js');
+const { Events, MessageFlags } = require('discord.js');
 const { ROLE_BUTTON_CONFIG } = require('../commands/setup-reactions.js');
 
 // Create a Set of all possible age role names for quick lookups
@@ -26,7 +26,8 @@ module.exports = {
       const roleToAdd = guildRoles.find(r => r.name === roleNameToAdd);
       if (!roleToAdd) {
         console.error(`[REACTIONS] Role "${roleNameToAdd}" not found on the server.`);
-        await interaction.reply({ content: 'An error occurred: The role for this button could not be found.', ephemeral: true });
+        // CORRECTED: Using flags instead of ephemeral: true
+        await interaction.reply({ content: 'An error occurred: The role for this button could not be found.', flags: [MessageFlags.Ephemeral] });
         return;
       }
 
@@ -42,16 +43,18 @@ module.exports = {
       await member.roles.add(roleToAdd);
 
       // Send a private confirmation message
+      // CORRECTED: Using flags instead of ephemeral: true
       await interaction.reply({
         content: `You have been given the **${roleToAdd.name}** role!`,
-        ephemeral: true // This makes the message visible only to the user who clicked
+        flags: [MessageFlags.Ephemeral]
       });
 
       console.log(`[REACTIONS] Assigned role "${roleToAdd.name}" to user ${interaction.user.tag}.`);
 
     } catch (error) {
       console.error('Error handling reaction role update:', error);
-      await interaction.reply({ content: 'Sorry, there was an error trying to update your roles. Please try again later.', ephemeral: true });
+      // CORRECTED: Using flags instead of ephemeral: true
+      await interaction.reply({ content: 'Sorry, there was an error trying to update your roles. Please try again later.', flags: [MessageFlags.Ephemeral] });
     }
   },
 };
