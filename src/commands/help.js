@@ -9,7 +9,7 @@ module.exports = {
 
     const helpEmbed = new EmbedBuilder()
       .setColor(0x0099FF) // Light blue color
-      .setTitle('Starboarder Bot Help')
+      .setTitle('UrbexWarden Help')
       .setDescription('Here is a list of commands you can use.')
       .setThumbnail(message.client.user.displayAvatarURL()) // Shows the bot's avatar
       .addFields(
@@ -27,7 +27,7 @@ module.exports = {
         { name: '`!purge-users`', value: 'Manually runs the purge check for unverified members. (Admin only)', inline: false },
         { name: '`!remind-users`', value: 'Manually runs the reminder check for unverified members. (Admin only)', inline: false },
       )
-      .setFooter({ text: `Starboarder v1.1.0 | For feature help, ask an admin.` })
+      .setFooter({ text: `UrbexWarden v1.1 | For feature help, ask an admin.` })
       .setTimestamp();
 
     try {
