@@ -10,7 +10,7 @@ const defaultDbStructure = {
   userAwards: {},
   reactionRoleMessageId: null,
   memberJoinDates: {},
-  starredMessageIds: {}, // <-- ADD THIS LINE
+  starboardPosts: {}, // <-- RENAMED AND WILL STORE { originalMsgId: starboardMsgId }
 };
 
 /**
@@ -20,26 +20,29 @@ const defaultDbStructure = {
 function initializeDb() {
   if (!fs.existsSync(dbPath)) {
     console.log('[DB] Database file not found. Creating a new one...');
-    const db = readDb(); // Read to get a valid structure (even if default)
-    // Ensure the new structure property exists if db.json was from an older version
-    if (!db.memberJoinDates) {
-      db.memberJoinDates = {};
-    }
-    if (!db.starredMessageIds) { // <-- ADD THIS BLOCK
-      db.starredMessageIds = {};
-    }
-    writeDb(db);
+    writeDb(JSON.parse(JSON.stringify(defaultDbStructure)));
   } else {
     // Also handle case where db.json exists but is from an older version
     const db = readDb();
+    let dbModified = false;
     if (db.memberJoinDates === undefined) {
       console.log('[DB] Adding new `memberJoinDates` property to existing database.');
       db.memberJoinDates = {};
-      writeDb(db);
+      dbModified = true;
     }
-    if (db.starredMessageIds === undefined) { // <-- ADD THIS BLOCK
-      console.log('[DB] Adding new `starredMessageIds` property to existing database.');
-      db.starredMessageIds = {};
+    // Migration from the previous starboard implementation
+    if (db.starredMessageIds !== undefined) {
+      console.log('[DB] Migrating `starredMessageIds` to `starboardPosts`.');
+      delete db.starredMessageIds;
+      db.starboardPosts = {};
+      dbModified = true;
+    }
+    if (db.starboardPosts === undefined) {
+      console.log('[DB] Adding new `starboardPosts` property to existing database.');
+      db.starboardPosts = {};
+      dbModified = true;
+    }
+    if (dbModified) {
       writeDb(db);
     }
   }
