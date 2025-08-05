@@ -44,6 +44,34 @@ module.exports = {
         const member = interaction.member;
         const logChannel = interaction.guild.channels.cache.find(channel => channel.name === config.logChannelName);
 
+        // --- HANDLE UNDER 16 KICK ---
+        if (action === 'kick_under_16') {
+          if (!interaction.guild.members.me.permissions.has(PermissionFlagsBits.KickMembers)) {
+            // This message is for the server admin, in case the bot lacks permissions.
+            return interaction.reply({ content: 'I do not have the "Kick Members" permission to perform this action.', ephemeral: true });
+          }
+
+          try {
+            // Send a DM to the user before kicking them
+            await member.send(`You have been removed from **${interaction.guild.name}** because you have indicated you are under the age of 16, which is against the server's policy.`);
+          } catch (dmError) {
+            console.error(`Could not DM user ${member.user.tag} before kicking.`);
+          }
+
+          // Kick the user
+          await member.kick('User selected the "Under 16" role.');
+
+          // Log the action for moderators
+          if (logChannel) {
+            await logChannel.send(`👢 **User Kicked**: ${member.user.tag} (${member.id}) was automatically kicked for selecting the "Under 16" role.`);
+          }
+
+          // The user will be gone, so this reply won't be seen by them, but it's good practice to acknowledge the interaction.
+          return interaction.reply({ content: 'The action has been processed.', ephemeral: true });
+        }
+        // --- END OF KICK LOGIC ---
+
+
         try {
           const userRolesToRemove = member.roles.cache.filter(role => allAgeRoleNames.has(role.name));
 

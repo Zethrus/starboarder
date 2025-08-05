@@ -4,6 +4,7 @@ const { readDb, writeDb } = require('../utils/helpers');
 const config = require('../../config');
 
 const ROLE_BUTTON_CONFIG = [
+  { emoji: '0️⃣', label: 'Under 16', roleName: 'kick_under_16', style: ButtonStyle.Danger },
   { emoji: '1️⃣', label: '16-17', roleName: '16-17', style: ButtonStyle.Secondary },
   { emoji: '2️⃣', label: '18-20', roleName: '18-20', style: ButtonStyle.Secondary },
   { emoji: '3️⃣', label: '21-24', roleName: '21-24', style: ButtonStyle.Secondary },
@@ -11,7 +12,7 @@ const ROLE_BUTTON_CONFIG = [
   { emoji: '5️⃣', label: '30-34', roleName: '30-34', style: ButtonStyle.Secondary },
   { emoji: '6️⃣', label: '35-39', roleName: '35-39', style: ButtonStyle.Secondary },
   { emoji: '7️⃣', label: '40+', roleName: '40+', style: ButtonStyle.Secondary },
-  { emoji: '🗑️', label: 'Clear Role', roleName: 'clear_age_role', style: ButtonStyle.Danger },
+  { emoji: '🗑️', label: 'Clear Role', roleName: 'clear_age_role', style: ButtonStyle.Secondary },
 ];
 
 module.exports = {
@@ -33,18 +34,27 @@ module.exports = {
     await interaction.reply({ content: '⚙️ Setting up reaction roles...', ephemeral: true });
 
     try {
-      for (const config of ROLE_BUTTON_CONFIG) {
-        if (config.roleName === 'clear_age_role') continue;
+      // --- AUTOMATIC ROLE CREATION (Corrected) ---
+      // Filter out any special actions that are not actual roles before creating them.
+      const rolesToCreate = ROLE_BUTTON_CONFIG.filter(config =>
+        config.roleName !== 'clear_age_role' && config.roleName !== 'kick_under_16'
+      );
+
+      console.log('[ROLES] Checking for and creating missing roles...');
+      for (const config of rolesToCreate) {
         const roleExists = interaction.guild.roles.cache.some(role => role.name === config.roleName);
         if (!roleExists) {
           await interaction.guild.roles.create({ name: config.roleName, reason: 'Auto-created for reaction roles.' });
+          console.log(`[ROLES] Created role: ${config.roleName}`);
         }
       }
+      console.log('[ROLES] Role check complete.');
+      // ---------------------------------------------
 
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
         .setTitle('Select Your Age Range')
-        .setDescription('Click a button to assign yourself an age-range role. This is optional and can be cleared at any time.');
+        .setDescription('Click a button to assign yourself an age-range role. This is optional and can be cleared at any time.\n\n**Note:** This server has a minimum age requirement of 16. Selecting "Under 16" will result in your removal from the server.');
 
       const components = [];
       let currentRow = new ActionRowBuilder();
