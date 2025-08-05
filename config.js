@@ -27,6 +27,14 @@ module.exports = {
   themeHashtag: process.env.THEME_HASHTAG ? process.env.THEME_HASHTAG.trim() : '#theme-of-the-month',
   reactionRoleChannel: process.env.REACTION_ROLE_CHANNEL || 'information',
   replyDeleteDelay: parseInt(process.env.REPLY_DELETE_DELAY, 10) || 5000,
+  // --- Settings for Ban Evasion Detection ---
+  enableBanEvasion: (process.env.ENABLE_BAN_EVASION || 'true').toLowerCase() === 'true',
+  banEvasionMaxAccountAgeDays: parseInt(process.env.BAN_EVASION_MAX_ACCOUNT_AGE_DAYS, 10) || 1, // Default to 1 day
+  banEvasionAction: process.env.BAN_EVASION_ACTION || 'log', // Can be 'log' or 'ban'
+  banEvasionAlertChannelName: process.env.BAN_EVASION_ALERT_CHANNEL_NAME || 'admin-chat',
+  // --- Settings for Alt Account Detection ---
+  altAccountThresholdHours: parseInt(process.env.ALT_ACCOUNT_THRESHOLD_HOURS, 10) || 24, // Time window in hours to check for similar creation dates
+
 
   // --- Settings for Unverified Member Reminder ---
   verifiedRoleName: process.env.VERIFIED_ROLE_NAME || 'Verified Member',
