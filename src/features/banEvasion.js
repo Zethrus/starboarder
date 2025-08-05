@@ -1,10 +1,9 @@
 // src/features/banEvasion.js
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const config = require('../../config');
 
 /**
- * Checks a new member for signs of ban evasion, specifically a very new account age.
- * Takes action based on the server's configuration (log or ban).
+ * Checks a new member for signs of ban evasion and sends an alert with action buttons.
  * @param {import('discord.js').GuildMember} member The member who just joined the server.
  */
 async function handleBanEvasion(member) {
@@ -17,12 +16,26 @@ async function handleBanEvasion(member) {
 
   if (accountAgeDays < config.banEvasionMaxAccountAgeDays) {
     const logChannel = member.guild.channels.cache.find(channel => channel.name === config.logChannelName);
-    // Find the new admin alert channel
     const alertChannel = member.guild.channels.cache.find(channel => channel.name === config.banEvasionAlertChannelName);
 
     const action = config.banEvasionAction.toLowerCase();
     const reason = `Account age is ${accountAgeDays.toFixed(1)} days, which is less than the configured minimum of ${config.banEvasionMaxAccountAgeDays} days.`;
-    const actionTakenText = action === 'ban' ? 'Banned' : 'Logged';
+    const actionTakenText = action === 'ban' ? 'Automatically Banned' : 'Logged';
+
+    // --- Create Interactive Buttons ---
+    const actionRow = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(`evasion_ban:${member.id}`) // Pass the user's ID in the customId
+          .setLabel('Ban User')
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji('🔨'),
+        new ButtonBuilder()
+          .setCustomId('evasion_ignore')
+          .setLabel('Ignore this alert')
+          .setStyle(ButtonStyle.Secondary)
+      );
+    // --------------------------------
 
     const logEmbed = new EmbedBuilder()
       .setColor(action === 'ban' ? 0xFF0000 : 0xFFA500)
@@ -32,38 +45,38 @@ async function handleBanEvasion(member) {
         { name: 'User', value: `${member.user} (${member.id})`, inline: false },
         { name: 'Account Created', value: `<t:${Math.floor(accountCreationDate.getTime() / 1000)}:F>`, inline: false },
         { name: 'Reason', value: reason, inline: false },
-        { name: 'Action Taken', value: `**${actionTakenText}**`, inline: false }
+        { name: 'Initial Action', value: `**${actionTakenText}**`, inline: false }
       )
       .setTimestamp();
 
-    // --- Send Admin Alert ---
+    // --- Send Alert to Admin Channel ---
     if (alertChannel) {
-      const alertMessage = `@here A potential ban evader has joined: **${member.user.tag}**. Action taken: **${actionTakenText}**.`;
+      // Only show buttons if the initial action was NOT a ban
+      const components = (action !== 'ban') ? [actionRow] : [];
       await alertChannel.send({
-        content: alertMessage,
-        embeds: [logEmbed] // Send the same detailed embed for context
+        content: `@here A potential ban evader has joined: **${member.user.tag}**. Please review.`,
+        embeds: [logEmbed],
+        components: components
       }).catch(err => console.error(`[BAN EVASION] Failed to send alert to #${alertChannel.name}:`, err));
     }
-    // ----------------------
+    // ---------------------------------
 
-    // --- Perform Action & Log to main log channel ---
+    // --- Perform Initial Action & Log to main log channel ---
     if (action === 'ban') {
       try {
         if (!config.enableDryRun) {
           await member.send(`You have been automatically banned from **${member.guild.name}** for suspected ban evasion (account too new).`).catch(() => { });
           await member.ban({ reason: `Ban Evasion System: ${reason}` });
         }
-        console.log(`[BAN EVASION] ${config.enableDryRun ? '[DRY RUN] ' : ''}Banned new user ${member.user.tag} for being too new.`);
         if (logChannel && logChannel.id !== alertChannel?.id) {
-          await logChannel.send({ embeds: [logEmbed] }); // Also log to #logs if it's a different channel
+          await logChannel.send({ embeds: [logEmbed] });
         }
       } catch (error) {
         console.error(`[BAN EVASION] Failed to ban member ${member.user.tag}:`, error);
       }
     } else { // 'log' action
-      console.log(`[BAN EVASION] Flagged new user ${member.user.tag} for being too new.`);
       if (logChannel && logChannel.id !== alertChannel?.id) {
-        await logChannel.send({ embeds: [logEmbed] }); // Also log to #logs if it's a different channel
+        await logChannel.send({ embeds: [logEmbed] });
       }
     }
   }
