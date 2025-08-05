@@ -4,7 +4,7 @@ const { readDb, writeDb } = require('../utils/helpers');
 const config = require('../../config');
 
 const ROLE_BUTTON_CONFIG = [
-  { emoji: '0️⃣', label: 'Under 16', roleName: 'kick_under_16', style: ButtonStyle.Danger },
+  { emoji: '0️⃣', label: 'Under 16', roleName: 'kick_under_16', style: ButtonStyle.Secondary },
   { emoji: '1️⃣', label: '16-17', roleName: '16-17', style: ButtonStyle.Secondary },
   { emoji: '2️⃣', label: '18-20', roleName: '18-20', style: ButtonStyle.Secondary },
   { emoji: '3️⃣', label: '21-24', roleName: '21-24', style: ButtonStyle.Secondary },
