@@ -54,7 +54,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setColor(0x5865F2)
         .setTitle('Select Your Age Range')
-        .setDescription('Click a button to assign yourself an age-range role. This is optional and can be cleared at any time.\n\n**Note:** This server has a minimum age requirement of 16. Selecting "Under 16" will result in your removal from the server.');
+        .setDescription('Click a button to assign yourself an age-range role. This is optional and can be cleared at any time.');
 
       const components = [];
       let currentRow = new ActionRowBuilder();
