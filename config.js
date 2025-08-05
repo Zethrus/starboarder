@@ -32,6 +32,11 @@ module.exports = {
   banEvasionMaxAccountAgeDays: parseInt(process.env.BAN_EVASION_MAX_ACCOUNT_AGE_DAYS, 10) || 1, // Default to 1 day
   banEvasionAction: process.env.BAN_EVASION_ACTION || 'log', // Can be 'log' or 'ban'
   banEvasionAlertChannelName: process.env.BAN_EVASION_ALERT_CHANNEL_NAME || 'admin-chat',
+  // -- Suspicion Score Settings --
+  banEvasionSuspicionThreshold: parseInt(process.env.BAN_EVASION_SUSPICION_THRESHOLD, 10) || 3, // Alert if score is this or higher
+  banEvasionPointsNewAccount: parseInt(process.env.BAN_EVASION_POINTS_NEW_ACCOUNT, 10) || 3, // Points for a new account
+  banEvasionPointsDefaultAvatar: parseInt(process.env.BAN_EVASION_POINTS_DEFAULT_AVATAR, 10) || 1, // Points for a default avatar
+  banEvasionNewAccountDays: parseInt(process.env.BAN_EVASION_NEW_ACCOUNT_DAYS, 10) || 1, // Definition of a "new" account in days
   // --- Settings for Alt Account Detection ---
   altAccountThresholdHours: parseInt(process.env.ALT_ACCOUNT_THRESHOLD_HOURS, 10) || 24, // Time window in hours to check for similar creation dates
 

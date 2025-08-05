@@ -22,15 +22,14 @@ module.exports = {
       return interaction.editReply({ content: 'That user is not currently in this server.' });
     }
 
-    const thresholdMilliseconds = (config.altAccountThresholdHours || 24) * 3600 * 1000;
+    // Ensure the config value is present, default to 24 if not
+    const thresholdHours = config.altAccountThresholdHours || 24;
+    const thresholdMilliseconds = thresholdHours * 3600 * 1000;
     const potentialAlts = [];
 
-    // Fetch all members from the guild to ensure we have the full list
     const allMembers = await interaction.guild.members.fetch();
 
-    // Iterate through every member in the server
     for (const member of allMembers.values()) {
-      // Skip the target user themselves and any bots
       if (member.id === targetUser.id || member.user.bot) {
         continue;
       }
@@ -42,21 +41,28 @@ module.exports = {
       }
     }
 
-    // Build the response embed
     const embed = new EmbedBuilder()
       .setTitle('🛡️ Alternate Account Check')
-      .setColor(potentialAlts.length > 0 ? 0xFF0000 : 0x00FF00) // Red if alts found, Green if not
+      .setColor(potentialAlts.length > 0 ? 0xFF0000 : 0x00FF00)
       .addFields(
         { name: 'Target User', value: `${targetUser.tag} (${targetUser.id})` },
         { name: 'Target Account Created', value: `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:F>` }
       )
-      .setFooter({ text: `Checked against ${allMembers.size} members with a ${config.altAccountThresholdHours || 24}-hour threshold.` })
+      .setFooter({ text: `Checked against ${allMembers.size} members with a ${thresholdHours}-hour threshold.` })
       .setTimestamp();
 
     if (potentialAlts.length > 0) {
+      // Sort alts by creation date to see the order
+      potentialAlts.sort((a, b) => a.user.createdTimestamp - b.user.createdTimestamp);
+
       const altField = potentialAlts
-        .map(alt => `**${alt.user.tag}** (<t:${Math.floor(alt.user.createdTimestamp / 1000)}:R>)`)
-        .join('\n');
+        .map(alt => {
+          const avatarStatus = alt.user.avatar === null ? ' (Default Avatar)' : '';
+          return `**${alt.user.tag}**${avatarStatus}\n` +
+            `*Created:* <t:${Math.floor(alt.user.createdTimestamp / 1000)}:R>\n` +
+            `*Joined Server:* <t:${Math.floor(alt.joinedTimestamp / 1000)}:R>`;
+        })
+        .join('\n\n');
 
       embed.addFields({ name: '🚨 Potential Alts Found', value: altField });
     } else {
