@@ -39,15 +39,15 @@ const verificationContent = {
   title: "Welcome to Urbex Alberta",
   description: "The server works on a system of tiered membership. Right now by seeing this message you are a @Unverified Member, this not only limits your access to the server (deliberately for the safety of the community) but also ensures that you're not here to cause problems within the server itself. This also intends to prove that you have interest within this server.",
   steps: [
-    "**Step 1**. Read the server rules in #rules.",
-    "**Step 2**. Read the details about information and resources in. #information and #resources.",
+    "**Step 1**. Read the server rules in: #rules.",
+    "**Step 2**. Read the details about information and resources in: #information and #resources.",
     "**Step 3**. Send a intro about yourself, to give others a brief understanding of why you're interested in Urbex in #intros.",
     "**Step 4**. Post a minimum of 3 photos in #photography of something directly relating to urbex that you have done.",
     "**Step 5**. Follow the instructions in the following embed to request membership."
   ],
-  complications: "If you have any complications, don't feel afraid to reach out in #noob-chat",
+  complications: "If you have any complications, don't feel afraid to reach out in: #noob-chat",
   notWelcome: [
-    "Vandals, graffiti artists, taggers, scrappers, arsonists, undercover cops looking to bust local people interested in architectural history",
+    "Vandals, graffiti artists, taggers, scrappers, arsonists, undercover cops looking to bust local people interested in architectural history 🧠",
     "Those who don't follow the server rules",
     "Those who have been blacklisted or previously banned.",
     "Unapproved Alt Accounts",
@@ -85,13 +85,10 @@ module.exports = {
       // --- 1. Create Rules Post ---
       const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
-      // Build the string for each rule list using a single newline character '\n'
       const conductString = rulesContent.conduct.map((rule, i) => `**${romanNumerals[i]}.** ${rule}`).join('\n');
       const contentString = rulesContent.content.map((rule, i) => `**${romanNumerals[i]}.** ${rule}`).join('\n');
-      // The notes section has spacing between notes, so '\n\n' is correct here.
       const notesString = rulesContent.notes.map((note, i) => `**Note ${i + 1}:** ${note}`).join('\n\n');
 
-      // Join the major sections with a double newline for spacing between them.
       const fullRulesDescription = `**Conduct Rules**\n${conductString}\n\n**Content Rules**\n${contentString}\n\n${notesString}`;
 
       const rulesEmbed = new EmbedBuilder()
@@ -116,7 +113,7 @@ module.exports = {
         .setColor(0x5865F2)
         .setDescription(verificationContent.description.replace('@Unverified Member', `**Unverified Member**`))
         .addFields(
-          { name: "What are the steps to get membership?", value: verificationContent.steps.join('\n') },
+          { name: "What are the steps to get membership?", value: verificationContent.steps.map(step => `➡️ ${step}`).join('\n') },
           { name: '\u200B', value: verificationContent.complications }
         );
 
