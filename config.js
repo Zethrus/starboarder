@@ -31,7 +31,7 @@ module.exports = {
   enableBanEvasion: (process.env.ENABLE_BAN_EVASION || 'true').toLowerCase() === 'true',
   banEvasionMaxAccountAgeDays: parseInt(process.env.BAN_EVASION_MAX_ACCOUNT_AGE_DAYS, 10) || 1, // Default to 1 day
   banEvasionAction: process.env.BAN_EVASION_ACTION || 'log', // Can be 'log' or 'ban'
-  banEvasionAlertChannelName: process.env.BAN_EVASION_ALERT_CHANNEL_NAME || 'admin-chat',
+  banEvasionAlertChannelName: process.env.BAN_EVASION_ALERT_CHANNEL_NAME || 'admins-chat',
   // -- Suspicion Score Settings --
   banEvasionSuspicionThreshold: parseInt(process.env.BAN_EVASION_SUSPICION_THRESHOLD, 10) || 3, // Alert if score is this or higher
   banEvasionPointsNewAccount: parseInt(process.env.BAN_EVASION_POINTS_NEW_ACCOUNT, 10) || 3, // Points for a new account
