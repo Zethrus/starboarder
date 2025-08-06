@@ -39,13 +39,13 @@ const verificationContent = {
   title: "Welcome to Urbex Alberta",
   description: "The server works on a system of tiered membership. Right now by seeing this message you are a @Unverified Member, this not only limits your access to the server (deliberately for the safety of the community) but also ensures that you're not here to cause problems within the server itself. This also intends to prove that you have interest within this server.",
   steps: [
-    "**Step 1**. Read the server rules in: #rules.",
-    "**Step 2**. Read the details about information and resources in: #information and #resources.",
-    "**Step 3**. Send a intro about yourself, to give others a brief understanding of why you're interested in Urbex in #intros.",
-    "**Step 4**. Post a minimum of 3 photos in #photography of something directly relating to urbex that you have done.",
+    "**Step 1**. Read the server rules in <#rules>.",
+    "**Step 2**. Read the details about information and resources in <#information> and <#resources>.",
+    "**Step 3**. Send a intro about yourself, to give others a brief understanding of why you're interested in Urbex in <#intros>.",
+    "**Step 4**. Post a minimum of 3 photos in <#photography> of something directly relating to urbex that you have done.",
     "**Step 5**. Follow the instructions in the following embed to request membership."
   ],
-  complications: "If you have any complications, don't feel afraid to reach out in: #noob-chat",
+  complications: "If you have any complications, don't feel afraid to reach out in <#noob-chat>",
   notWelcome: [
     "Vandals, graffiti artists, taggers, scrappers, arsonists, undercover cops looking to bust local people interested in architectural history 🧠",
     "Those who don't follow the server rules",
@@ -55,8 +55,9 @@ const verificationContent = {
   ],
   afterApply: "If you meet the criteria, congrats! you can apply to be a server member!\nIf you did apply, and were not approved for whatever reason, you'll be told why and expected to complete the tasks or face removal from the server.",
   removalWarning: "Members that have been within the server for ten (10) days without sending a singular message and do not attempt to complete the member verification will be removed.",
-  requestMessage: "Members that meet this criteria can apply in #request-membership with the following message:",
-  requestQuote: "I understand the rules of this server, and equally know that may be banned, blacklisted, or put on probation for violating the server rules. I equally state that I meet the criteria and have completed the tasks outlined in the how-2-member channel. @Server Staff"
+  requestMessage: "Members that meet this criteria can apply in <#request-membership> with the following message:",
+  requestQuote: "I understand the rules of this server, and equally know that may be banned, blacklisted, or put on probation for violating the server rules. I equally state that I meet the criteria and have completed the tasks outlined in the how-2-member channel. @Server Staff",
+  reactionInstruction: "**After posting the above message, you must react to the ✅ green checkmark on this message to submit your application for \"Verified Member\" status.**"
 };
 
 module.exports = {
@@ -108,13 +109,33 @@ module.exports = {
       const rulesMessage = await rulesChannel.send({ embeds: [rulesEmbed], components: [rulesRow] });
 
       // --- 2. Create Verification Post ---
+      // Find channels for proper linking
+      const rulesChannelLink = interaction.guild.channels.cache.find(c => c.name === 'rules') || '#rules';
+      const informationChannelLink = interaction.guild.channels.cache.find(c => c.name === 'information') || '#information';
+      const resourcesChannelLink = interaction.guild.channels.cache.find(c => c.name === 'resources') || '#resources';
+      const introsChannelLink = interaction.guild.channels.cache.find(c => c.name === 'intros') || '#intros';
+      const photographyChannelLink = interaction.guild.channels.cache.find(c => c.name === 'photography') || '#photography';
+      const noobChatChannelLink = interaction.guild.channels.cache.find(c => c.name === 'noob-chat') || '#noob-chat';
+      const requestMembershipChannelLink = interaction.guild.channels.cache.find(c => c.name === 'request-membership') || '#request-membership';
+
+      const dynamicSteps = [
+        `**Step 1**. Read the server rules in ${rulesChannelLink}.`,
+        `**Step 2**. Read the details about information and resources in ${informationChannelLink} and ${resourcesChannelLink}.`,
+        `**Step 3**. Send a intro about yourself, to give others a brief understanding of why you're interested in Urbex in ${introsChannelLink}.`,
+        `**Step 4**. Post a minimum of 3 photos in ${photographyChannelLink} of something directly relating to urbex that you have done.`,
+        `**Step 5**. Follow the instructions in the following embed to request membership.`
+      ];
+
+      const dynamicComplications = `If you have any complications, don't feel afraid to reach out in ${noobChatChannelLink}`;
+      const dynamicRequestMessage = `Members that meet this criteria can apply in ${requestMembershipChannelLink} with the following message:`;
+
       const verificationEmbed1 = new EmbedBuilder()
         .setTitle(verificationContent.title)
         .setColor(0x5865F2)
         .setDescription(verificationContent.description.replace('@Unverified Member', `**Unverified Member**`))
         .addFields(
-          { name: "What are the steps to get membership?", value: verificationContent.steps.map(step => `➡️ ${step}`).join('\n') },
-          { name: '\u200B', value: verificationContent.complications }
+          { name: "What are the steps to get membership?", value: dynamicSteps.map(step => `➡️ ${step}`).join('\n') },
+          { name: '\u200B', value: dynamicComplications }
         );
 
       const verificationEmbed2 = new EmbedBuilder()
@@ -128,7 +149,8 @@ module.exports = {
       const verificationEmbed3 = new EmbedBuilder()
         .setColor(0xFEE75C)
         .addFields(
-          { name: verificationContent.requestMessage, value: `\`\`\`${verificationContent.requestQuote.replace('@Server Staff', '')}\`\`\`` }
+          { name: dynamicRequestMessage, value: `\`\`\`${verificationContent.requestQuote.replace('@Server Staff', '')}\`\`\`` },
+          { name: '\u200B', value: verificationContent.reactionInstruction }
         );
 
       const verificationMessage = await howToMemberChannel.send({ embeds: [verificationEmbed1, verificationEmbed2, verificationEmbed3] });
