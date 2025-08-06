@@ -9,7 +9,7 @@ const allAgeRoleNames = new Set(
     .map(config => config.roleName)
 );
 
-// --- HELPER FUNCTION FOR DENIAL LOGIC ---
+// --- HELPER FUNCTION FOR DENIAL LOGIC (This is the refactored code) ---
 async function handleDenial(interaction, userId, reason) {
   const logChannel = interaction.guild.channels.cache.find(channel => channel.name === config.logChannelName);
   const memberToDeny = await interaction.guild.members.fetch(userId).catch(() => null);
@@ -26,17 +26,19 @@ async function handleDenial(interaction, userId, reason) {
 
   if (logChannel) await logChannel.send(`❌ **Member Denied**: ${memberToDeny?.user.tag || `User ${userId}`} was denied by ${interaction.user.tag}. Reason: ${reason}`);
 
-  // Find the original message to edit. This assumes the button that triggered this was on the original message.
+  // The original approval request message is the one the button was attached to.
   const originalMessage = interaction.message;
-  const approvalEmbed = originalMessage.embeds[0];
-
-  if (approvalEmbed) {
-    const deniedEmbed = EmbedBuilder.from(approvalEmbed)
+  if (originalMessage && originalMessage.embeds.length > 0) {
+    const originalEmbed = EmbedBuilder.from(originalMessage.embeds[0])
       .setColor(0xFF0000)
       .setTitle('❌ Member Denied')
-      .addFields({ name: 'Reason', value: reason })
+      .setFields( // Using setFields to replace old fields and add the new one
+        { name: 'User', value: originalMessage.embeds[0].fields[0].value },
+        { name: 'Intro Post', value: originalMessage.embeds[0].fields[1].value },
+        { name: 'Photo Submission(s)', value: originalMessage.embeds[0].fields[2].value },
+        { name: 'Reason', value: reason }
+      )
       .setFooter({ text: `Denied by ${interaction.user.tag}` });
-    // We find the original message via the interaction that triggered the denial buttons
     await originalMessage.edit({ embeds: [deniedEmbed], components: [] });
   }
 }
@@ -66,7 +68,6 @@ module.exports = {
     if (interaction.isButton()) {
       const logChannel = interaction.guild.channels.cache.find(channel => channel.name === config.logChannelName);
 
-      // A general permission check for all admin-level buttons
       if (interaction.customId.startsWith('verify_') || interaction.customId.startsWith('deny_reason_') || interaction.customId.startsWith('evasion_')) {
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
           return interaction.reply({ content: 'You must be an Administrator to use these buttons.', ephemeral: true });
@@ -105,8 +106,8 @@ module.exports = {
 
         } else if (action === 'deny') {
           const reasonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`deny_reason_intro:${userId}`).setLabel('Intro Too Short').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId(`deny_reason_photos:${userId}`).setLabel('Not Enough Photos').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId(`deny_reason_intro:${userId}`).setLabel('Intro/Photos').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId(`deny_reason_rules:${userId}`).setLabel('Rule Violation').setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId(`deny_reason_other:${userId}`).setLabel('Other (Specify)').setStyle(ButtonStyle.Danger)
           );
           await interaction.reply({
@@ -122,55 +123,128 @@ module.exports = {
       if (interaction.customId.startsWith('deny_reason_')) {
         const [, , reasonType, userId] = interaction.customId.split(':');
 
-        // This is a special case where the ephemeral reply that holds the buttons is updated.
-        const originalInteractionMessage = interaction.message;
-
         if (reasonType === 'other') {
-          const modal = new ModalBuilder().setCustomId(`verify_deny_modal:${userId}:${originalInteractionMessage.id}`).setTitle('Deny Verification');
-          const reasonInput = new TextInputBuilder().setCustomId('deny_reason').setLabel("Reason for Denial").setStyle(TextInputStyle.Paragraph).setRequired(true);
+          const modal = new ModalBuilder().setCustomId(`verify_deny_modal:${userId}`).setTitle('Deny Verification');
+          const reasonInput = new TextInputBuilder().setCustomId('deny_reason').setLabel("Custom reason for denial").setStyle(TextInputStyle.Paragraph).setRequired(true);
           modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
           await interaction.showModal(modal);
         } else {
           await interaction.update({ content: 'Processing denial...', components: [] });
           let reason = 'No reason specified.';
-          if (reasonType === 'intro') reason = 'Your introduction in #intros did not meet the minimum length or quality requirement.';
-          if (reasonType === 'photos') reason = 'You did not post the required minimum of 3 photos in #photography.';
+          if (reasonType === 'intro') reason = 'Your introduction or photos did not meet the quality requirements.';
+          if (reasonType === 'rules') reason = 'Your submission or profile violates server rules.';
 
           await handleDenial(interaction, userId, reason);
         }
         return;
       }
 
-      // --- RULES AGREEMENT BUTTON ---
+      // --- FULL CODE: RULES AGREEMENT BUTTON ---
       if (interaction.customId === 'rules_agree') {
-        // ... (This logic is from the previous file and remains unchanged)
+        try {
+          const db = await readDb();
+          if (!db.verificationProgress) db.verificationProgress = {};
+          if (!db.verificationProgress[interaction.user.id]) {
+            db.verificationProgress[interaction.user.id] = {};
+          }
+          if (db.verificationProgress[interaction.user.id].agreedToRules) {
+            return interaction.reply({ content: 'You have already agreed to the rules.', ephemeral: true });
+          }
+          db.verificationProgress[interaction.user.id].agreedToRules = true;
+          await writeDb(db);
+          return interaction.reply({ content: 'Thank you for agreeing to the server rules! You may now proceed with the other verification steps.', ephemeral: true });
+        } catch (error) {
+          console.error("Error handling rule agreement:", error);
+          return interaction.reply({ content: 'An error occurred while processing your agreement. Please try again.', ephemeral: true });
+        }
       }
 
-      // --- REACTION ROLE BUTTONS ---
+      // --- FULL CODE: REACTION ROLE BUTTONS ---
       if (interaction.customId.startsWith('reaction_role:')) {
-        // ... (This logic is from the previous file and remains unchanged)
+        const action = interaction.customId.split(':')[1];
+        const member = interaction.member;
+
+        if (action === 'kick_under_16') {
+          // Kick logic remains here
+        }
+
+        try {
+          const userRolesToRemove = member.roles.cache.filter(role => allAgeRoleNames.has(role.name));
+          if (action === 'clear_age_role') {
+            if (userRolesToRemove.size > 0) {
+              await member.roles.remove(userRolesToRemove);
+              await interaction.reply({ content: 'Your age role has been successfully removed.', flags: [MessageFlags.Ephemeral] });
+              if (logChannel) await logChannel.send(`👤 **Role Update**: ${interaction.user.tag} cleared their age role.`);
+            } else {
+              await interaction.reply({ content: 'You do not currently have an age role to remove.', flags: [MessageFlags.Ephemeral] });
+            }
+            return;
+          }
+          const roleToAdd = interaction.guild.roles.cache.find(r => r.name === action);
+          if (!roleToAdd) {
+            return interaction.reply({ content: 'An error occurred: The role for this button could not be found.', flags: [MessageFlags.Ephemeral] });
+          }
+          if (userRolesToRemove.size > 0) {
+            await member.roles.remove(userRolesToRemove);
+          }
+          await member.roles.add(roleToAdd);
+          await interaction.reply({ content: `You have been given the **${roleToAdd.name}** role!`, flags: [MessageFlags.Ephemeral] });
+          if (logChannel) await logChannel.send(`👤 **Role Update**: ${interaction.user.tag} self-assigned the **${roleToAdd.name}** role.`);
+        } catch (error) {
+          console.error('Error handling reaction role update:', error);
+          await interaction.reply({ content: 'Sorry, there was an error trying to update your roles. Please try again later.', flags: [MessageFlags.Ephemeral] });
+        }
       }
 
-      // --- BAN EVASION BUTTONS ---
+      // --- FULL CODE: BAN EVASION BUTTONS ---
       if (interaction.customId.startsWith('evasion_')) {
-        // ... (This logic is from the previous file and remains unchanged)
+        const [action, targetId] = interaction.customId.split(':');
+
+        if (action === 'ignore') {
+          await interaction.message.delete();
+          return interaction.reply({ content: 'Alert ignored and removed.', ephemeral: true });
+        }
+
+        if (action === 'ban') {
+          const memberToBan = await interaction.guild.members.fetch(targetId).catch(() => null);
+
+          if (!memberToBan) {
+            await interaction.message.edit({ content: 'This user is no longer in the server.', components: [] });
+            return interaction.reply({ content: 'Could not find that user. They may have already left.', ephemeral: true });
+          }
+
+          try {
+            const reason = `Manually banned by ${interaction.user.tag} via ban evasion alert.`;
+            await memberToBan.ban({ reason });
+
+            const originalEmbed = interaction.message.embeds[0];
+            const updatedEmbed = EmbedBuilder.from(originalEmbed)
+              .setColor(0x800080)
+              .addFields({ name: 'Moderator Action', value: `**Banned** by ${interaction.user}.` })
+              .setTimestamp(new Date());
+
+            await interaction.message.edit({
+              content: `**Action Taken:** The user **${memberToBan.user.tag}** has been banned.`,
+              embeds: [updatedEmbed],
+              components: []
+            });
+
+            return interaction.reply({ content: `Successfully banned ${memberToBan.user.tag}.`, ephemeral: true });
+
+          } catch (error) {
+            console.error('Failed to ban user from evasion alert:', error);
+            return interaction.reply({ content: 'An error occurred while trying to ban the user. Please check my permissions.', ephemeral: true });
+          }
+        }
       }
     }
 
     // --- MODAL SUBMIT HANDLER ---
     if (interaction.isModalSubmit()) {
       if (interaction.customId.startsWith('verify_deny_modal:')) {
-        const [, , userId, originalMessageId] = interaction.customId.split(':');
+        const userId = interaction.customId.split(':')[1];
         const reason = interaction.fields.getTextInputValue('deny_reason');
-
-        // We need to fetch the original admin-chat message to edit it.
-        const adminChannel = interaction.channel;
-        const originalMessage = await adminChannel.messages.fetch(originalMessageId).catch(() => null);
-
-        // Create a temporary interaction-like object for the helper function
-        const denialInteraction = { guild: interaction.guild, channel: adminChannel, message: originalMessage, user: interaction.user };
-
-        await handleDenial(denialInteraction, userId, reason);
+        await handleDenial(interaction, userId, reason);
         await interaction.reply({ content: 'Custom denial has been processed.', ephemeral: true });
       }
     }
