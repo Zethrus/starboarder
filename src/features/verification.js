@@ -2,32 +2,46 @@
 const config = require('../../config');
 const { readDb } = require('../utils/helpers');
 
+const MIN_INTRO_LENGTH = 50; // Minimum characters for a valid intro
+
 /**
  * Checks if a member has completed all verification steps.
  * @param {import('discord.js').GuildMember} member The member to check.
- * @returns {Promise<{success: boolean, missing: string[]}>} An object indicating success and a list of missing steps.
+ * @returns {Promise<{
+ * success: boolean,
+ * missing: string[],
+ * evidence: { introMessage: import('discord.js').Message | null, photoMessages: import('discord.js').Message[] }
+ * }>} An object indicating success, a list of missing steps, and evidence messages.
  */
 async function checkVerificationStatus(member) {
   const db = await readDb();
   const guild = member.guild;
   const missingSteps = [];
+  const evidence = {
+    introMessage: null,
+    photoMessages: [],
+  };
 
   // --- Step 1: Agreed to rules ---
   const hasAgreedToRules = db.verificationProgress?.[member.id]?.agreedToRules === true;
   if (!hasAgreedToRules) {
-    missingSteps.push('Agree to the rules in #rules.');
+    missingSteps.push('Agree to the rules in #rules by clicking the button.');
   }
 
-  // --- Step 2: Read info (Not programmatically verifiable) ---
+  // --- Step 2: Read info (Not verifiable) ---
 
   // --- Step 3: Intro message ---
   try {
     const introChannel = guild.channels.cache.find(c => c.name === 'intros');
     if (introChannel) {
       const introMessages = await introChannel.messages.fetch({ limit: 100 });
-      const hasPostedIntro = introMessages.some(m => m.author.id === member.id);
-      if (!hasPostedIntro) {
-        missingSteps.push('Post an introduction in #intros.');
+      // Find a message from the user that meets the minimum length
+      const userIntro = introMessages.find(m => m.author.id === member.id && m.content.length >= MIN_INTRO_LENGTH);
+
+      if (userIntro) {
+        evidence.introMessage = userIntro;
+      } else {
+        missingSteps.push(`Post an introduction of at least ${MIN_INTRO_LENGTH} characters in #intros.`);
       }
     } else {
       missingSteps.push('Could not find #intros channel.');
@@ -41,15 +55,17 @@ async function checkVerificationStatus(member) {
   try {
     const photoChannel = guild.channels.cache.find(c => c.name === 'photography');
     if (photoChannel) {
-      let photoCount = 0;
       const photoMessages = await photoChannel.messages.fetch({ limit: 100 });
       const userMessages = photoMessages.filter(m => m.author.id === member.id);
 
+      let photoCount = 0;
       for (const message of userMessages.values()) {
-        for (const attachment of message.attachments.values()) {
-          if (attachment.contentType?.startsWith('image/')) {
-            photoCount++;
-          }
+        const imageAttachments = message.attachments.filter(att => att.contentType?.startsWith('image/'));
+        if (imageAttachments.size > 0) {
+          // Count each attachment as one photo
+          photoCount += imageAttachments.size;
+          // Save the message as evidence
+          evidence.photoMessages.push(message);
         }
       }
 
@@ -64,26 +80,13 @@ async function checkVerificationStatus(member) {
     missingSteps.push('Error checking for photos.');
   }
 
-  // --- Step 5: Request membership ---
-  try {
-    const requestChannel = guild.channels.cache.find(c => c.name === 'request-membership');
-    if (requestChannel) {
-      const requestMessages = await requestChannel.messages.fetch({ limit: 50 });
-      const hasRequested = requestMessages.some(m => m.author.id === member.id && m.content.includes('I understand the rules of this server'));
-      if (!hasRequested) {
-        missingSteps.push('Post the verification request message in #request-membership.');
-      }
-    } else {
-      missingSteps.push('Could not find #request-membership channel.');
-    }
-  } catch (e) {
-    console.error("Error checking request:", e);
-    missingSteps.push('Error checking for membership request.');
-  }
+  // We don't check for step 5, as that is part of the old manual process.
+  // The user reacting is the new "request for membership".
 
   return {
     success: missingSteps.length === 0,
     missing: missingSteps,
+    evidence: evidence,
   };
 }
 
