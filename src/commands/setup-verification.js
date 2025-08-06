@@ -7,29 +7,29 @@ const config = require('../../config');
 const rulesContent = {
   title: "Urbex Alberta Server Rules",
   conduct: [
-    "Treat all members with respect, don't be a asshole.",
-    "Racism, Homophobia, Sexism, and any other form of discriminatory behaviour is prohibited.",
-    "Promotion of Terrorism or Extremism is prohibited.",
-    "Raiding/Raid threats will result in a immediate ban.",
-    "Use of slurs, in any context, is strictly prohibited from being used in this server.",
-    "You must be above the age of 16 to be in this server.",
-    "Doxxing an individual will result in a immediate ban. Anonymity is strongly recommended for everyone.",
+    "Treat all members with respect, **don't be a asshole.**",
+    "Racism, Homophobia, Sexism, and any other form of discriminatory behaviour is **prohibited**.",
+    "Promotion of Terrorism or Extremism is **prohibited**.",
+    "Raiding/Raid threats will result in a **immediate ban**.",
+    "Use of slurs, in any context, is **strictly prohibited** from being used in this server.",
+    "You must be above the **age of 16** to be in this server.",
+    "Doxxing an individual will result in a **immediate ban**. Anonymity is strongly recommended for everyone.",
     "Please keep your profile picture/name appropriate.",
-    "Location begging is strictly prohibited, do not ask for locations."
+    "Location begging is **strictly prohibited**, do not ask for locations."
   ],
   content: [
-    "No revealing locations, photography is allowed, however details about the whereabouts of the location, or relevant name, is strictly prohibited.",
+    "No **revealing locations**, photography is allowed, however details about the whereabouts of the location, or relevant name, is **strictly prohibited**.",
     "Do not spam or flood the chat with text walls.",
-    "Do not post NSFW/NSFL content anywhere in this server, we do not want to see gore or porn.",
+    "Do not post NSFW/NSFL content anywhere in this server, **we do not want to see gore or porn**.",
     "Please post correct content in the correct channels.",
-    "Depictions of your own deliberate vandalism, arson, or other acts of damage to sites, spots, or anywhere else, are prohibited and will result in a ban.",
-    "Careless talk costs spots, do not 'burn' locations.",
+    "Depictions of your own deliberate vandalism, arson, or other acts of damage to sites, spots, or anywhere else, are **prohibited and will result in a ban**.",
+    "Careless talk costs spots, **do not 'burn' locations**.",
     "All posts relating to urbex should have a level of maturity, don't be a idiot.",
-    "Posts mentioning or containing the use or recommendation of tools are strictly prohibited."
+    "Posts mentioning or containing the use or recommendation of tools are **strictly prohibited**."
   ],
   notes: [
-    "It is the members responsibility that if they notice any form of these rules being broken, or a concern to which the rules are being broken, to immediately inform a member of staff.",
-    "It is up to the discretion of the staff team to enforce these rules. This prohibits any \"loopholes\" as anything that can be considered to violate these rules will be enforced as to the above. If you believe you have been wrongly punished, you may contact an administrator.",
+    "It is the members responsibility that if they notice any form of these rules being broken, or a concern to which the rules are being broken, to **immediately inform a member of staff**.",
+    "It is up to the discretion of the staff team to enforce these rules. This prohibits any **\"loopholes\"** as anything that can be considered to violate these rules will be enforced as to the above. If you believe you have been wrongly punished, you may contact an administrator.",
     "Punishments may range from warns, mutes, server probation, server blacklist, or a complete removal from the server, whether permanent or temporary. The severity will be determined by the staff member, and will fall into the same policy under Note 2."
   ],
   footer: "Server rules last updated on 24-03-2025"
@@ -83,18 +83,19 @@ module.exports = {
 
     try {
       // --- 1. Create Rules Post ---
-      const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']; // Helper array for Roman numerals
+      const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+
+      // Build the single description string for the rules embed to ensure correct spacing
+      const conductString = rulesContent.conduct.map((rule, i) => `**${romanNumerals[i]}.** ${rule}`).join('\n\n');
+      const contentString = rulesContent.content.map((rule, i) => `**${romanNumerals[i]}.** ${rule}`).join('\n\n');
+      const notesString = rulesContent.notes.map((note, i) => `**Note ${i + 1}:** ${note}`).join('\n\n');
+
+      const fullRulesDescription = `**Conduct Rules**\n${conductString}\n\n**Content Rules**\n${contentString}\n\n${notesString}`;
 
       const rulesEmbed = new EmbedBuilder()
         .setTitle(rulesContent.title)
         .setColor(0x5865F2)
-        .addFields(
-          { name: 'Conduct Rules', value: rulesContent.conduct.map((rule, i) => `**${i + 1}.** ${rule}`).join('\n\n') },
-          { name: 'Content Rules', value: rulesContent.content.map((rule, i) => `**${romanNumerals[i]}.** ${rule}`).join('\n\n') },
-          { name: 'Note 1', value: rulesContent.notes[0] },
-          { name: 'Note 2', value: rulesContent.notes[1] },
-          { name: 'Note 3', value: rulesContent.notes[2] }
-        )
+        .setDescription(fullRulesDescription) // Use .setDescription() for a single text block
         .setFooter({ text: rulesContent.footer });
 
       const rulesRow = new ActionRowBuilder().addComponents(
