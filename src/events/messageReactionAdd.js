@@ -18,6 +18,11 @@ module.exports = {
 
         // Remove reaction to indicate processing
         await reaction.users.remove(user.id);
+        const thinkingMessage = await reaction.message.reply({
+          content: `Thanks, ${user.tag}! I'm checking your application now...`,
+          ephemeral: true // This makes the message only visible to the user
+        });
+
 
         // Check if user is already pending review
         if (db.verificationProgress?.[user.id]?.status === 'pending') {
@@ -57,7 +62,11 @@ module.exports = {
               .setCustomId(`verify_deny:${user.id}`)
               .setLabel('Deny')
               .setStyle(ButtonStyle.Danger)
-              .setEmoji('👎')
+              .setEmoji('👎'),
+            new ButtonBuilder()
+              .setLabel('View Profile')
+              .setStyle(ButtonStyle.Link)
+              .setURL(`https://discord.com/users/${user.id}`)
           );
 
           await adminChannel.send({
@@ -76,6 +85,7 @@ module.exports = {
           const failureMessage = `❌ **Verification Incomplete**\n\nWe noticed you tried to complete the verification process, but you are still missing the following step(s):\n\n- ${status.missing.join('\n- ')}\n\nPlease complete these steps and then react to the message in #how-2-member again.`;
           await user.send(failureMessage).catch(() => { });
         }
+        await thinkingMessage.delete();
       }
     } catch (error) {
       console.error("Error processing verification reaction:", error);
