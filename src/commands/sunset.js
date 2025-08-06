@@ -1,7 +1,24 @@
 // src/commands/sunset.js
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const SunCalc = require('suncalc');
-const fetch = require('node-fetch');
+const https = require('https');
+
+// Helper function to make HTTP requests
+function httpsGet(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { 'User-Agent': 'Discord Bot - Starboarder' } }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }).on('error', reject);
+  });
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -21,17 +38,7 @@ module.exports = {
 
       // Geocode the location using OpenStreetMap Nominatim API (free, no key required)
       const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`;
-      const geocodeResponse = await fetch(geocodeUrl, {
-        headers: {
-          'User-Agent': 'Discord Bot - Starboarder'
-        }
-      });
-      
-      if (!geocodeResponse.ok) {
-        throw new Error('Failed to fetch location data');
-      }
-      
-      const geocodeData = await geocodeResponse.json();
+      const geocodeData = await httpsGet(geocodeUrl);
       
       if (geocodeData.length === 0) {
         const errorEmbed = new EmbedBuilder()
