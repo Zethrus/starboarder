@@ -78,7 +78,7 @@ module.exports = {
       if (interaction.customId.startsWith('verify_')) {
         const [action, userId] = interaction.customId.split(':');
 
-        if (action === 'approve') {
+        if (action === 'verify_approve') {
           await interaction.deferUpdate();
           const memberToVerify = await interaction.guild.members.fetch(userId).catch(() => null);
           if (!memberToVerify) return;
@@ -104,7 +104,7 @@ module.exports = {
             .setFooter({ text: `Approved by ${interaction.user.tag}` });
           await interaction.message.edit({ embeds: [originalEmbed], components: [] });
 
-        } else if (action === 'deny') {
+        } else if (action === 'verify_deny') {
           const reasonRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`deny_reason_intro:${userId}`).setLabel('Intro/Photos').setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId(`deny_reason_rules:${userId}`).setLabel('Rule Violation').setStyle(ButtonStyle.Secondary),
