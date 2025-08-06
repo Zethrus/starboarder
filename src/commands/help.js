@@ -26,6 +26,8 @@ module.exports = {
         { name: '`/award display [@user]`', value: 'Shows the awards earned by you or another user.', inline: true },
         { name: '`/award top`', value: 'Displays the server-wide awards leaderboard.', inline: true },
         { name: '`/help`', value: 'Displays this help message.', inline: true },
+        { name: '`/sunrise <location>`', value: 'Get sunrise time for a specific location.', inline: true },
+        { name: '`/sunset <location>`', value: 'Get sunset time for a specific location.', inline: true },
       )
 
       .addFields({ name: '\u200B', value: '__**Admin & Moderator Commands**__' }) // Spacer and section title
