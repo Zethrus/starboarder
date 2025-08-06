@@ -11,6 +11,9 @@ const defaultDbStructure = {
   reactionRoleMessageId: null,
   memberJoinDates: {},
   starboardPosts: {},
+  rulesMessageId: null,
+  verificationMessageId: null,
+  verificationProgress: {},
 };
 
 /**

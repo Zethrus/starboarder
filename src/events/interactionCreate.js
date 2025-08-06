@@ -2,6 +2,7 @@
 const { Events, MessageFlags, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { ROLE_BUTTON_CONFIG } = require('../commands/setup-reactions.js');
 const config = require('../../config');
+const { readDb, writeDb } = require('../utils/helpers');
 
 // Create a Set of all actual age role names for quick lookups, excluding the special 'clear' action
 const allAgeRoleNames = new Set(
@@ -37,7 +38,34 @@ module.exports = {
 
     // --- BUTTON INTERACTION HANDLER ---
     if (interaction.isButton()) {
+      if (interaction.customId === 'rules_agree') {
+        try {
+          const db = await readDb();
+          if (!db.verificationProgress) db.verificationProgress = {};
+          if (!db.verificationProgress[interaction.user.id]) {
+            db.verificationProgress[interaction.user.id] = {};
+          }
 
+          if (db.verificationProgress[interaction.user.id].agreedToRules) {
+            return interaction.reply({
+              content: 'You have already agreed to the rules.',
+              ephemeral: true
+            });
+          }
+
+          db.verificationProgress[interaction.user.id].agreedToRules = true;
+          await writeDb(db);
+
+          return interaction.reply({
+            content: 'Thank you for agreeing to the server rules! You may now proceed with the other verification steps.',
+            ephemeral: true
+          });
+
+        } catch (error) {
+          console.error("Error handling rule agreement:", error);
+          return interaction.reply({ content: 'An error occurred while processing your agreement. Please try again.', ephemeral: true });
+        }
+      }
       // --- REACTION ROLE BUTTONS ---
       if (interaction.customId.startsWith('reaction_role:')) {
         const action = interaction.customId.split(':')[1];
