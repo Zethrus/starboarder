@@ -85,17 +85,19 @@ module.exports = {
       // --- 1. Create Rules Post ---
       const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
-      // Build the single description string for the rules embed to ensure correct spacing
-      const conductString = rulesContent.conduct.map((rule, i) => `**${romanNumerals[i]}.** ${rule}`).join('\n\n');
-      const contentString = rulesContent.content.map((rule, i) => `**${romanNumerals[i]}.** ${rule}`).join('\n\n');
+      // Build the string for each rule list using a single newline character '\n'
+      const conductString = rulesContent.conduct.map((rule, i) => `**${romanNumerals[i]}.** ${rule}`).join('\n');
+      const contentString = rulesContent.content.map((rule, i) => `**${romanNumerals[i]}.** ${rule}`).join('\n');
+      // The notes section has spacing between notes, so '\n\n' is correct here.
       const notesString = rulesContent.notes.map((note, i) => `**Note ${i + 1}:** ${note}`).join('\n\n');
 
+      // Join the major sections with a double newline for spacing between them.
       const fullRulesDescription = `**Conduct Rules**\n${conductString}\n\n**Content Rules**\n${contentString}\n\n${notesString}`;
 
       const rulesEmbed = new EmbedBuilder()
         .setTitle(rulesContent.title)
         .setColor(0x5865F2)
-        .setDescription(fullRulesDescription) // Use .setDescription() for a single text block
+        .setDescription(fullRulesDescription)
         .setFooter({ text: rulesContent.footer });
 
       const rulesRow = new ActionRowBuilder().addComponents(
