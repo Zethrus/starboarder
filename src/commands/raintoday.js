@@ -63,7 +63,7 @@ module.exports = {
       const rainEmbed = new EmbedBuilder()
         .setColor(0x0099FF) // Blue color for rain
         .setTitle(`☔ Rain Probability: ${rainProbability}%`)
-        .setDescription(`**Location:** ${display_name}`)
+        .setDescription(`**Location:** ${displayName}`)
         .addFields(
           { name: 'Coordinates', value: `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, inline: true }
         )
