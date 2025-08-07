@@ -37,6 +37,7 @@ function getWeatherEmoji(weatherCode) {
 }
 
 module.exports = {
+  category: 'General',
   data: new SlashCommandBuilder()
     .setName('weather')
     .setDescription('Get the current weather for a specific location.')

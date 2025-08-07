@@ -3,6 +3,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const config = require('../../config');
 
 module.exports = {
+  category: 'Admin',
   data: new SlashCommandBuilder()
     .setName('check-evasion')
     .setDescription('Manually checks a user against the ban evasion criteria.')

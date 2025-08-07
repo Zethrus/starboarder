@@ -27,6 +27,7 @@ function getMoonPhaseName(phase) {
 }
 
 module.exports = {
+  category: 'General',
   data: new SlashCommandBuilder()
     .setName('moonphase')
     .setDescription('Shows the current phase of the moon.'),

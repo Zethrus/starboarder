@@ -4,6 +4,7 @@ const SunCalc = require('suncalc');
 const { geocodeLocation } = require('../utils/network');
 
 module.exports = {
+  category: 'General',
   data: new SlashCommandBuilder()
     .setName('goldenhour')
     .setDescription('Get golden hour times for a specific location.')

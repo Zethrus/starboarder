@@ -4,6 +4,7 @@ const SunCalc = require('suncalc');
 const { geocodeLocation } = require('../utils/network');
 
 module.exports = {
+  category: 'General',
   data: new SlashCommandBuilder()
     .setName('sunrise')
     .setDescription('Get sunrise time for a specific location')

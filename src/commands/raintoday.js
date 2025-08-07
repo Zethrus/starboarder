@@ -3,6 +3,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { geocodeLocation, httpsGet } = require('../utils/network');
 
 module.exports = {
+  category: 'General',
   data: new SlashCommandBuilder()
     .setName('raintoday')
     .setDescription('Check the probability of rain for a specific location.')

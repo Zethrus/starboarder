@@ -4,6 +4,7 @@ const config = require('../../config');
 const { readDb, writeDb } = require('../utils/helpers');
 
 module.exports = {
+  category: 'Admin',
   data: new SlashCommandBuilder()
     .setName('purge-users')
     .setDescription('Manually runs the purge check for unverified members.')

@@ -21,6 +21,7 @@ function httpsGet(url) {
 }
 
 module.exports = {
+  category: 'General',
   data: new SlashCommandBuilder()
     .setName('sunset')
     .setDescription('Get sunset time for a specific location')
