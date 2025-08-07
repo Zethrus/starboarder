@@ -30,6 +30,8 @@ module.exports = {
         { name: '`/sunset <location>`', value: 'Get sunset time for a specific location.', inline: true },
         { name: '`/raintoday <location>`', value: 'Checks the probability of rain for a specific location.', inline: true },
         { name: '`/weather <location>`', value: 'Get the current weather for a specific location.', inline: true },
+        { name: '`/moonphase`', value: 'Shows the current phase of the moon.', inline: true },
+        { name: '`/goldenhour <location>`', value: 'Get golden hour times for a specific location.', inline: true },
       )
 
       .addFields({ name: '\u200B', value: '__**Admin & Moderator Commands**__' }) // Spacer and section title
