@@ -14,6 +14,7 @@ const defaultDbStructure = {
   rulesMessageId: null,
   verificationMessageId: null,
   verificationProgress: {},
+  userLocations: {},
 };
 
 /**

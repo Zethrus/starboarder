@@ -1,24 +1,8 @@
 // src/commands/sunset.js
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const SunCalc = require('suncalc');
-const https = require('https');
-
-// Helper function to make HTTP requests
-function httpsGet(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'Discord Bot - Starboarder' } }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (error) {
-          reject(error);
-        }
-      });
-    }).on('error', reject);
-  });
-}
+const { geocodeLocation } = require('../utils/network');
+const { readDb } = require('../utils/helpers');
 
 module.exports = {
   category: 'General',
@@ -27,21 +11,34 @@ module.exports = {
     .setDescription('Get sunset time for a specific location')
     .addStringOption(option =>
       option.setName('location')
-        .setDescription('The location to get sunset time for (e.g., "New York", "London", "Tokyo")')
-        .setRequired(true)
+        .setDescription('Location to check (e.g., "New York"). Defaults to your saved location.')
+        .setRequired(false)
     ),
 
   async execute(interaction) {
-    const location = interaction.options.getString('location');
+    let location = interaction.options.getString('location');
+    const userId = interaction.user.id;
     
     try {
       await interaction.deferReply();
 
-      // Geocode the location using OpenStreetMap Nominatim API (free, no key required)
-      const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`;
-      const geocodeData = await httpsGet(geocodeUrl);
+      if (!location) {
+        const db = await readDb();
+        location = db.userLocations?.[userId];
+        if (!location) {
+          const errorEmbed = new EmbedBuilder()
+            .setColor(0xFFCC00)
+            .setTitle('⚠️ No Location Set')
+            .setDescription('You have not set a default location.\nUse the `/set-location` command to save your preferred location, or provide one in the command.')
+            .setTimestamp();
+          await interaction.editReply({ embeds: [errorEmbed] });
+          return;
+        }
+      }
+
+      const geocodeData = await geocodeLocation(location);
       
-      if (geocodeData.length === 0) {
+      if (!geocodeData) {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xFF0000)
           .setTitle('❌ Location Not Found')
@@ -52,9 +49,7 @@ module.exports = {
         return;
       }
       
-      const { lat, lon, display_name } = geocodeData[0];
-      const latitude = parseFloat(lat);
-      const longitude = parseFloat(lon);
+      const { latitude, longitude, displayName } = geocodeData;
       
       // Calculate sunset time for today
       const today = new Date();
