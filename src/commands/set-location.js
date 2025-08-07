@@ -1,5 +1,5 @@
 // src/commands/set-location.js
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { geocodeLocation } = require('../utils/network');
 const { readDb, writeDb } = require('../utils/helpers');
 
@@ -19,7 +19,7 @@ module.exports = {
     const userId = interaction.user.id;
 
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
       const geocodeData = await geocodeLocation(location);
 
@@ -60,7 +60,7 @@ module.exports = {
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply({ embeds: [errorEmbed] });
       } else {
-        await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        await interaction.reply({ embeds: [errorEmbed], flags: [MessageFlags.Ephemeral] });
       }
     }
   },
