@@ -2,6 +2,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const SunCalc = require('suncalc');
 const { geocodeLocation } = require('../utils/network');
+const { readDb } = require('../utils/helpers');
 
 module.exports = {
   category: 'General',
@@ -10,15 +11,30 @@ module.exports = {
     .setDescription('Get sunrise time for a specific location')
     .addStringOption(option =>
       option.setName('location')
-        .setDescription('The location to get sunrise time for (e.g., "New York", "London", "Tokyo")')
-        .setRequired(true)
+        .setDescription('Location to check (e.g., "New York"). Defaults to your saved location.')
+        .setRequired(false)
     ),
 
   async execute(interaction) {
-    const location = interaction.options.getString('location');
+    let location = interaction.options.getString('location');
+    const userId = interaction.user.id;
     
     try {
       await interaction.deferReply();
+
+      if (!location) {
+        const db = await readDb();
+        location = db.userLocations?.[userId];
+        if (!location) {
+          const errorEmbed = new EmbedBuilder()
+            .setColor(0xFFCC00)
+            .setTitle('⚠️ No Location Set')
+            .setDescription('You have not set a default location.\nUse the `/set-location` command to save your preferred location, or provide one in the command.')
+            .setTimestamp();
+          await interaction.editReply({ embeds: [errorEmbed] });
+          return;
+        }
+      }
 
       const geocodeData = await geocodeLocation(location);
       
