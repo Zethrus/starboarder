@@ -2,6 +2,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const SunCalc = require('suncalc');
 const { geocodeLocation } = require('../utils/network');
+const { readDb } = require('../utils/helpers');
 
 module.exports = {
   category: 'General',
@@ -11,14 +12,33 @@ module.exports = {
     .addStringOption(option =>
       option.setName('location')
         .setDescription('The location to get golden hour times for (e.g., "New York", "London", "Tokyo")')
-        .setRequired(true)
+        .setRequired(false)
     ),
 
   async execute(interaction) {
-    const location = interaction.options.getString('location');
+    let location = interaction.options.getString('location');
+    const userId = interaction.user.id;
 
     try {
       await interaction.deferReply();
+
+      if (!location) {
+        const db = await readDb();
+        const userLocation = db.userLocations[userId];
+
+        if (userLocation) {
+          location = userLocation;
+        } else {
+          const noLocationEmbed = new EmbedBuilder()
+            .setColor(0xFFCC00) // Yellow color for warning
+            .setTitle('📍 No Location Set')
+            .setDescription('You have not set a default location.\n\nPlease use the `/set-location` command to set your default location, or provide a location with this command (e.g., `/goldenhour New York`).')
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [noLocationEmbed] });
+          return;
+        }
+      }
 
       const geocodeData = await geocodeLocation(location);
 
@@ -67,7 +87,7 @@ module.exports = {
       const goldenHourEmbed = new EmbedBuilder()
         .setColor(0xFFD700) // Golden color
         .setTitle('🌇 Golden Hour Times')
-        .setDescription(`**Location:** ${display_name}\n**Date:** ${formattedDate}`)
+        .setDescription(`**Location:** ${displayName}\n**Date:** ${formattedDate}`)
         .addFields(
           { name: 'Morning Golden Hour Ends', value: formattedMorningTime, inline: true },
           { name: 'Evening Golden Hour Starts', value: formattedEveningTime, inline: true }
