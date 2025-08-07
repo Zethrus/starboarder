@@ -1,5 +1,5 @@
 // src/commands/sunset.js
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const SunCalc = require('suncalc');
 const { geocodeLocation } = require('../utils/network');
 const { readDb } = require('../utils/helpers');
@@ -100,7 +100,7 @@ module.exports = {
       const sunsetEmbed = new EmbedBuilder()
         .setColor(0xFF6B35) // Sunset orange color
         .setTitle('🌅 Sunset Time')
-        .setDescription(`**Location:** ${display_name}\n**Date:** ${formattedDate}\n**Sunset:** ${formattedTime} ${timeDescription}`)
+        .setDescription(`**Location:** ${displayName}\n**Date:** ${formattedDate}\n**Sunset:** ${formattedTime} ${timeDescription}`)
         .addFields(
           { name: 'Coordinates', value: `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, inline: true },
           { name: 'UTC Time', value: sunsetTime.toUTCString().split(' ')[4], inline: true }
@@ -122,7 +122,7 @@ module.exports = {
       if (interaction.deferred) {
         await interaction.editReply({ embeds: [errorEmbed] });
       } else {
-        await interaction.reply({ embeds: [errorEmbed] });
+        await interaction.reply({ embeds: [errorEmbed], flags: [MessageFlags.Ephemeral] });
       }
     }
   },

@@ -1,5 +1,5 @@
 // src/commands/sunrise.js
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const SunCalc = require('suncalc');
 const { geocodeLocation } = require('../utils/network');
 const { readDb } = require('../utils/helpers');
@@ -100,7 +100,7 @@ module.exports = {
       const sunriseEmbed = new EmbedBuilder()
         .setColor(0xFFD700) // Sunrise golden color
         .setTitle('🌄 Sunrise Time')
-        .setDescription(`**Location:** ${display_name}\n**Date:** ${formattedDate}\n**Sunrise:** ${formattedTime} ${timeDescription}`)
+        .setDescription(`**Location:** ${displayName}\n**Date:** ${formattedDate}\n**Sunrise:** ${formattedTime} ${timeDescription}`)
         .addFields(
           { name: 'Coordinates', value: `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, inline: true },
           { name: 'UTC Time', value: sunriseTime.toUTCString().split(' ')[4], inline: true }
@@ -122,7 +122,7 @@ module.exports = {
       if (interaction.deferred) {
         await interaction.editReply({ embeds: [errorEmbed] });
       } else {
-        await interaction.reply({ embeds: [errorEmbed] });
+        await interaction.reply({ embeds: [errorEmbed], flags: [MessageFlags.Ephemeral] });
       }
     }
   },

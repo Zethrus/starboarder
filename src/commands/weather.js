@@ -1,5 +1,5 @@
 // src/commands/weather.js
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { geocodeLocation, httpsGet } = require('../utils/network');
 const { readDb } = require('../utils/helpers');
 
@@ -97,7 +97,7 @@ module.exports = {
 
       const weatherEmbed = new EmbedBuilder()
         .setColor(0x0099FF) // Blue color
-        .setTitle(`${getWeatherEmoji(weather_code)} Current Weather in ${display_name}`)
+        .setTitle(`${getWeatherEmoji(weather_code)} Current Weather in ${displayName}`)
         .setDescription(`**${weatherDescription}**`)
         .addFields(
           { name: 'Temperature', value: `${temperature_2m}°C`, inline: true },
@@ -123,7 +123,7 @@ module.exports = {
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply({ embeds: [errorEmbed] });
       } else {
-        await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        await interaction.reply({ embeds: [errorEmbed], flags: [MessageFlags.Ephemeral] });
       }
     }
   },
