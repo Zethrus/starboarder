@@ -1,26 +1,10 @@
 // src/commands/sunrise.js
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const SunCalc = require('suncalc');
-const https = require('https');
-
-// Helper function to make HTTP requests
-function httpsGet(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'Discord Bot - Starboarder' } }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (error) {
-          reject(error);
-        }
-      });
-    }).on('error', reject);
-  });
-}
+const { geocodeLocation } = require('../utils/network');
 
 module.exports = {
+  category: 'General',
   data: new SlashCommandBuilder()
     .setName('sunrise')
     .setDescription('Get sunrise time for a specific location')
@@ -36,11 +20,9 @@ module.exports = {
     try {
       await interaction.deferReply();
 
-      // Geocode the location using OpenStreetMap Nominatim API (free, no key required)
-      const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`;
-      const geocodeData = await httpsGet(geocodeUrl);
+      const geocodeData = await geocodeLocation(location);
       
-      if (geocodeData.length === 0) {
+      if (!geocodeData) {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xFF0000)
           .setTitle('❌ Location Not Found')
@@ -51,9 +33,7 @@ module.exports = {
         return;
       }
       
-      const { lat, lon, display_name } = geocodeData[0];
-      const latitude = parseFloat(lat);
-      const longitude = parseFloat(lon);
+      const { latitude, longitude, displayName } = geocodeData;
       
       // Calculate sunrise time for today
       const today = new Date();

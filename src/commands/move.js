@@ -3,6 +3,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ChannelType } = 
 const { replyThenDelete } = require('../utils/helpers'); // replyThenDelete is not ideal for slash commands, we'll adapt
 
 module.exports = {
+  category: 'Admin',
   data: new SlashCommandBuilder()
     .setName('move')
     .setDescription('Moves a message with an image/video to another channel.')

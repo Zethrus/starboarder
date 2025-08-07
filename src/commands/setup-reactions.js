@@ -16,6 +16,7 @@ const ROLE_BUTTON_CONFIG = [
 ];
 
 module.exports = {
+  category: 'Admin',
   data: new SlashCommandBuilder()
     .setName('setup-reactions')
     .setDescription('Sets up the reaction role message in the information channel.')

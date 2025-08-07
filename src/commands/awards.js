@@ -177,6 +177,7 @@ async function handleListAwards(interaction) {
 
 // --- MAIN EXPORT ---
 module.exports = {
+  category: 'Admin',
   data: new SlashCommandBuilder()
     .setName('award')
     .setDescription('Manages the award system.')

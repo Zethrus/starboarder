@@ -61,6 +61,7 @@ const verificationContent = {
 };
 
 module.exports = {
+  category: 'Admin',
   data: new SlashCommandBuilder()
     .setName('setup-verification')
     .setDescription('Sets up the rules and verification messages in their respective channels.')

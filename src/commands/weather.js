@@ -1,23 +1,6 @@
 // src/commands/weather.js
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const https = require('https');
-
-// Helper function to make HTTP requests
-function httpsGet(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'Discord Bot - Weather' } }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (error) {
-          reject(error);
-        }
-      });
-    }).on('error', reject);
-  });
-}
+const { geocodeLocation, httpsGet } = require('../utils/network');
 
 function getWeatherEmoji(weatherCode) {
     const emojiMap = {
@@ -54,6 +37,7 @@ function getWeatherEmoji(weatherCode) {
 }
 
 module.exports = {
+  category: 'General',
   data: new SlashCommandBuilder()
     .setName('weather')
     .setDescription('Get the current weather for a specific location.')
@@ -69,11 +53,9 @@ module.exports = {
     try {
       await interaction.deferReply();
 
-      // Geocode the location using OpenStreetMap Nominatim API
-      const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`;
-      const geocodeData = await httpsGet(geocodeUrl);
+      const geocodeData = await geocodeLocation(location);
 
-      if (geocodeData.length === 0) {
+      if (!geocodeData) {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xFF0000)
           .setTitle('❌ Location Not Found')
@@ -84,9 +66,7 @@ module.exports = {
         return;
       }
 
-      const { lat, lon, display_name } = geocodeData[0];
-      const latitude = parseFloat(lat);
-      const longitude = parseFloat(lon);
+      const { latitude, longitude, displayName } = geocodeData;
 
       // Get weather data from Open-Meteo API
       const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m&temperature_unit=celsius&wind_speed_unit=kmh&precipitation_unit=mm&timezone=auto`;

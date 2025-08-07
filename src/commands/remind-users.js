@@ -4,6 +4,7 @@ const config = require('../../config');
 const { readDb, writeDb } = require('../utils/helpers');
 
 module.exports = {
+  category: 'Admin',
   data: new SlashCommandBuilder()
     .setName('remind-users')
     .setDescription('Manually runs the reminder check for unverified members.')
