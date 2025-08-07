@@ -28,6 +28,7 @@ module.exports = {
         { name: '`/help`', value: 'Displays this help message.', inline: true },
         { name: '`/sunrise <location>`', value: 'Get sunrise time for a specific location.', inline: true },
         { name: '`/sunset <location>`', value: 'Get sunset time for a specific location.', inline: true },
+        { name: '`/raintoday <location>`', value: 'Checks the probability of rain for a specific location.', inline: true },
       )
 
       .addFields({ name: '\u200B', value: '__**Admin & Moderator Commands**__' }) // Spacer and section title
