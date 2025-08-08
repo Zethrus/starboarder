@@ -1,46 +1,44 @@
 // src/commands/sunrise.js
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const SunCalc = require('suncalc');
-const https = require('https');
-
-// Helper function to make HTTP requests
-function httpsGet(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'Discord Bot - Starboarder' } }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (error) {
-          reject(error);
-        }
-      });
-    }).on('error', reject);
-  });
-}
+const { geocodeLocation } = require('../utils/network');
+const { readDb } = require('../utils/helpers');
 
 module.exports = {
+  category: 'General',
   data: new SlashCommandBuilder()
     .setName('sunrise')
     .setDescription('Get sunrise time for a specific location')
     .addStringOption(option =>
       option.setName('location')
-        .setDescription('The location to get sunrise time for (e.g., "New York", "London", "Tokyo")')
-        .setRequired(true)
+        .setDescription('Location to check (e.g., "New York"). Defaults to your saved location.')
+        .setRequired(false)
     ),
 
   async execute(interaction) {
-    const location = interaction.options.getString('location');
+    let location = interaction.options.getString('location');
+    const userId = interaction.user.id;
     
     try {
       await interaction.deferReply();
 
-      // Geocode the location using OpenStreetMap Nominatim API (free, no key required)
-      const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`;
-      const geocodeData = await httpsGet(geocodeUrl);
+      if (!location) {
+        const db = await readDb();
+        location = db.userLocations?.[userId];
+        if (!location) {
+          const errorEmbed = new EmbedBuilder()
+            .setColor(0xFFCC00)
+            .setTitle('⚠️ No Location Set')
+            .setDescription('You have not set a default location.\nUse the `/set-location` command to save your preferred location, or provide one in the command.')
+            .setTimestamp();
+          await interaction.editReply({ embeds: [errorEmbed] });
+          return;
+        }
+      }
+
+      const geocodeData = await geocodeLocation(location);
       
-      if (geocodeData.length === 0) {
+      if (!geocodeData) {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xFF0000)
           .setTitle('❌ Location Not Found')
@@ -51,9 +49,7 @@ module.exports = {
         return;
       }
       
-      const { lat, lon, display_name } = geocodeData[0];
-      const latitude = parseFloat(lat);
-      const longitude = parseFloat(lon);
+      const { latitude, longitude, displayName } = geocodeData;
       
       // Calculate sunrise time for today
       const today = new Date();
@@ -104,7 +100,7 @@ module.exports = {
       const sunriseEmbed = new EmbedBuilder()
         .setColor(0xFFD700) // Sunrise golden color
         .setTitle('🌄 Sunrise Time')
-        .setDescription(`**Location:** ${display_name}\n**Date:** ${formattedDate}\n**Sunrise:** ${formattedTime} ${timeDescription}`)
+        .setDescription(`**Location:** ${displayName}\n**Date:** ${formattedDate}\n**Sunrise:** ${formattedTime} ${timeDescription}`)
         .addFields(
           { name: 'Coordinates', value: `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, inline: true },
           { name: 'UTC Time', value: sunriseTime.toUTCString().split(' ')[4], inline: true }
@@ -126,7 +122,7 @@ module.exports = {
       if (interaction.deferred) {
         await interaction.editReply({ embeds: [errorEmbed] });
       } else {
-        await interaction.reply({ embeds: [errorEmbed] });
+        await interaction.reply({ embeds: [errorEmbed], flags: [MessageFlags.Ephemeral] });
       }
     }
   },

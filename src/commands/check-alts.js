@@ -3,6 +3,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const config = require('../../config');
 
 module.exports = {
+  category: 'Admin',
   data: new SlashCommandBuilder()
     .setName('check-alts')
     .setDescription('Scans server members for possible alternate accounts of a user.')

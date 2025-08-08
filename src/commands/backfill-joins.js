@@ -3,6 +3,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { readDb, writeDb } = require('../utils/helpers');
 
 module.exports = {
+  category: 'Admin',
   data: new SlashCommandBuilder()
     .setName('backfill-joins')
     .setDescription('One-time command to populate the database with join dates for existing members.')

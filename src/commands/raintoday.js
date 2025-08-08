@@ -1,45 +1,43 @@
 // src/commands/raintoday.js
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const https = require('https');
-
-// Helper function to make HTTP requests
-function httpsGet(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'Discord Bot - RainToday' } }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (error) {
-          reject(error);
-        }
-      });
-    }).on('error', reject);
-  });
-}
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
+const { geocodeLocation, httpsGet } = require('../utils/network');
+const { readDb } = require('../utils/helpers');
 
 module.exports = {
+  category: 'General',
   data: new SlashCommandBuilder()
     .setName('raintoday')
     .setDescription('Check the probability of rain for a specific location.')
     .addStringOption(option =>
       option.setName('location')
-        .setDescription('The location to check for rain (e.g., "Edmonton", "London", "Tokyo")')
-        .setRequired(true)
+        .setDescription('Location to check (e.g., "Edmonton"). Defaults to your saved location.')
+        .setRequired(false)
     ),
 
   async execute(interaction) {
-    const location = interaction.options.getString('location');
+    let location = interaction.options.getString('location');
+    const userId = interaction.user.id;
 
     try {
       await interaction.deferReply();
 
-      // Geocode the location using OpenStreetMap Nominatim API
-      const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`;
-      const geocodeData = await httpsGet(geocodeUrl);
+      if (!location) {
+        const db = await readDb();
+        location = db.userLocations?.[userId];
+        if (!location) {
+          const errorEmbed = new EmbedBuilder()
+            .setColor(0xFFCC00)
+            .setTitle('⚠️ No Location Set')
+            .setDescription('You have not set a default location.\nUse the `/set-location` command to save your preferred location, or provide one in the command.')
+            .setTimestamp();
+          await interaction.editReply({ embeds: [errorEmbed] });
+          return;
+        }
+      }
 
-      if (geocodeData.length === 0) {
+      const geocodeData = await geocodeLocation(location);
+
+      if (!geocodeData) {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xFF0000)
           .setTitle('❌ Location Not Found')
@@ -50,9 +48,7 @@ module.exports = {
         return;
       }
 
-      const { lat, lon, display_name } = geocodeData[0];
-      const latitude = parseFloat(lat);
-      const longitude = parseFloat(lon);
+      const { latitude, longitude, displayName } = geocodeData;
 
       // Get weather data from Open-Meteo API
       const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=precipitation_probability_max&timezone=auto`;
@@ -67,7 +63,7 @@ module.exports = {
       const rainEmbed = new EmbedBuilder()
         .setColor(0x0099FF) // Blue color for rain
         .setTitle(`☔ Rain Probability: ${rainProbability}%`)
-        .setDescription(`**Location:** ${display_name}`)
+        .setDescription(`**Location:** ${displayName}`)
         .addFields(
           { name: 'Coordinates', value: `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`, inline: true }
         )
@@ -88,7 +84,7 @@ module.exports = {
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply({ embeds: [errorEmbed] });
       } else {
-        await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        await interaction.reply({ embeds: [errorEmbed], flags: [MessageFlags.Ephemeral] });
       }
     }
   },
