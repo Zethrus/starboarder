@@ -49,6 +49,7 @@ module.exports = {
   async execute(interaction) {
     // --- SLASH COMMAND HANDLER ---
     if (interaction.isChatInputCommand()) {
+      console.log(`[COMMAND] /${interaction.commandName} by ${interaction.user.tag}`);
       const command = interaction.client.commands.get(interaction.commandName);
       if (!command) return;
       try {
