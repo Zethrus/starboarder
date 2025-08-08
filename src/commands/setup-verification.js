@@ -135,7 +135,8 @@ module.exports = {
         .setDescription(verificationContent.description.replace('@Unverified Member', `**Unverified Member**`))
         .addFields(
           { name: "What are the steps to get membership?", value: dynamicSteps.map(step => `➡️ ${step}`).join('\n') },
-          { name: '\u200B', value: dynamicComplications }
+          { name: '\u200B', value: dynamicComplications },
+          { name: 'Submitting your application', value: verificationContent.reactionInstruction }
         );
 
       const verificationEmbed2 = new EmbedBuilder()
